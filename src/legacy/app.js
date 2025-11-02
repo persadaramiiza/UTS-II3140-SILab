@@ -2296,7 +2296,7 @@ export function initApp() {
         setTimeout(() => {
           splashScreen.style.display = 'none';
         }, 800);
-      }, 3500);
+      }, 6500); // Show for 6.5 seconds - optimal timing
     };
     
     if (document.readyState === 'complete') {
