@@ -1,0 +1,114 @@
+name: Deploy SILab
+
+on:
+  push:
+    branches: [ main, production ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  # Job 1: Build and Test
+  build:
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        node-version: [20.x]
+    
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v3
+    
+    - name: 🟢 Setup Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v3
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+    
+    - name: 📦 Install frontend dependencies
+      run: npm ci
+    
+    - name: 📦 Install backend dependencies
+      run: cd backend && npm ci
+    
+    - name: 🏗️ Build frontend
+      run: npm run build
+    
+    - name: 🧪 Run tests (if available)
+      run: npm test || echo "No tests configured"
+      continue-on-error: true
+    
+    - name: 📤 Upload build artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: build-files
+        path: dist/
+        retention-days: 1
+
+  # Job 2: Deploy to Vercel (if configured)
+  deploy-vercel:
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v3
+    
+    - name: 🚀 Deploy to Vercel
+      uses: amondnet/vercel-action@v20
+      with:
+        vercel-token: ${{ secrets.VERCEL_TOKEN }}
+        vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+        vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+        vercel-args: '--prod'
+
+  # Job 3: Build and Push Docker Image
+  docker:
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/production'
+    
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v3
+    
+    - name: 🐳 Set up Docker Buildx
+      uses: docker/setup-buildx-action@v2
+    
+    - name: 🔑 Login to Docker Hub
+      uses: docker/login-action@v2
+      with:
+        username: ${{ secrets.DOCKER_USERNAME }}
+        password: ${{ secrets.DOCKER_PASSWORD }}
+    
+    - name: 🏗️ Build and push Docker image
+      uses: docker/build-push-action@v4
+      with:
+        context: .
+        push: true
+        tags: |
+          ${{ secrets.DOCKER_USERNAME }}/isl-virtual-lab:latest
+          ${{ secrets.DOCKER_USERNAME }}/isl-virtual-lab:${{ github.sha }}
+        cache-from: type=registry,ref=${{ secrets.DOCKER_USERNAME }}/isl-virtual-lab:buildcache
+        cache-to: type=registry,ref=${{ secrets.DOCKER_USERNAME }}/isl-virtual-lab:buildcache,mode=max
+
+  # Job 4: Deploy to VPS (if configured)
+  deploy-vps:
+    needs: docker
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/production'
+    
+    steps:
+    - name: 🚀 Deploy to VPS via SSH
+      uses: appleboy/ssh-action@master
+      with:
+        host: ${{ secrets.VPS_HOST }}
+        username: ${{ secrets.VPS_USERNAME }}
+        key: ${{ secrets.VPS_SSH_KEY }}
+        script: |
+          cd /var/www/isl-virtual-lab
+          git pull origin production
+          docker-compose pull
+          docker-compose up -d
+          docker system prune -f

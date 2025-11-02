@@ -1,0 +1,38 @@
+# Render Blueprint for SILab
+services:
+  # Backend API Service
+  - type: web
+    name: isl-backend
+    env: node
+    region: singapore
+    plan: free
+    buildCommand: cd backend && npm install
+    startCommand: cd backend && npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 4000
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_EXPIRES_IN
+        value: 12h
+      - key: CORS_ORIGIN
+        value: https://isl-virtual-lab.onrender.com
+    healthCheckPath: /api/health
+
+  # Frontend Static Site
+  - type: web
+    name: isl-frontend
+    env: static
+    region: singapore
+    plan: free
+    buildCommand: npm install && npm run build
+    staticPublishPath: ./dist
+    routes:
+      - type: rewrite
+        source: /api/*
+        destination: https://isl-backend.onrender.com/api/*
+    envVars:
+      - key: NODE_ENV
+        value: production

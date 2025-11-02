@@ -1,0 +1,81 @@
+version: '3.8'
+
+services:
+  # SILab Application
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: isl-virtual-lab
+    restart: unless-stopped
+    ports:
+      - "4000:4000"
+    environment:
+      - NODE_ENV=production
+      - PORT=4000
+      - JWT_SECRET=${JWT_SECRET:-please-change-this-secret}
+      - JWT_EXPIRES_IN=12h
+      - CORS_ORIGIN=${CORS_ORIGIN:-*}
+    volumes:
+      - ./backend/data:/app/backend/data
+    networks:
+      - isl-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:4000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Optional: PostgreSQL Database (uncomment if needed)
+  # postgres:
+  #   image: postgres:16-alpine
+  #   container_name: isl-postgres
+  #   restart: unless-stopped
+  #   environment:
+  #     POSTGRES_DB: isl_virtual_lab
+  #     POSTGRES_USER: isl_user
+  #     POSTGRES_PASSWORD: ${DB_PASSWORD:-change-me}
+  #   ports:
+  #     - "5432:5432"
+  #   volumes:
+  #     - postgres-data:/var/lib/postgresql/data
+  #   networks:
+  #     - isl-network
+
+  # Optional: Redis Cache (uncomment if needed)
+  # redis:
+  #   image: redis:7-alpine
+  #   container_name: isl-redis
+  #   restart: unless-stopped
+  #   ports:
+  #     - "6379:6379"
+  #   volumes:
+  #     - redis-data:/data
+  #   networks:
+  #     - isl-network
+  #   command: redis-server --appendonly yes
+
+  # Optional: Nginx Reverse Proxy (uncomment for production)
+  # nginx:
+  #   image: nginx:alpine
+  #   container_name: isl-nginx
+  #   restart: unless-stopped
+  #   ports:
+  #     - "80:80"
+  #     - "443:443"
+  #   volumes:
+  #     - ./nginx.conf:/etc/nginx/nginx.conf:ro
+  #     - ./certs:/etc/nginx/certs:ro
+  #   networks:
+  #     - isl-network
+  #   depends_on:
+  #     - app
+
+networks:
+  isl-network:
+    driver: bridge
+
+volumes:
+  postgres-data:
+  redis-data:
