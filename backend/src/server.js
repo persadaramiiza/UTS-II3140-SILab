@@ -34,15 +34,26 @@ async function bootstrap() {
 
   const allowedOrigins = Array.from(new Set([...fromEnv, ...vercelDerivedOrigins]));
 
+  if (!globalThis.__islCorsOriginsLogged) {
+    console.log('[CORS] Allowed origins:', allowedOrigins.join(', '));
+    globalThis.__islCorsOriginsLogged = true;
+  }
+
+  const normalize = (value) => value?.toLowerCase();
+
   const isOriginAllowed = (origin) => {
     if (!origin) return true;
+    const normalizedOrigin = normalize(origin);
     return allowedOrigins.some((allowed) => {
+      const normalizedAllowed = normalize(allowed);
+
       if (allowed === '*') return true;
-      if (allowed === origin) return true;
-      if (allowed.includes('*')) {
-        const escaped = allowed.replace(/[.+?^${}()|[\]\\]/g, '\\$&');
+      if (!normalizedAllowed) return false;
+      if (normalizedAllowed === normalizedOrigin) return true;
+      if (normalizedAllowed.includes('*')) {
+        const escaped = normalizedAllowed.replace(/[.+?^${}()|[\]\\]/g, '\\$&');
         const regex = new RegExp(`^${escaped.replace(/\\\*/g, '.*')}$`);
-        return regex.test(origin);
+        return regex.test(normalizedOrigin);
       }
       return false;
     });
@@ -57,6 +68,7 @@ async function bootstrap() {
         if (isOriginAllowed(origin)) {
           callback(null, true);
         } else {
+          console.warn('[CORS] Blocked origin:', origin, '| Allowed:', allowedOrigins);
           callback(new Error('Not allowed by CORS'));
         }
       },
