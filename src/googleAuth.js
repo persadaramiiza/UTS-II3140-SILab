@@ -1,7 +1,9 @@
 // Google OAuth Integration for SILab
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
-const API_URL = import.meta.env.VITE_API_URL || '/api';
+// Fallback: development = localhost:4000, production = /api (same domain)
+const API_URL = import.meta.env.VITE_API_URL || 
+  (import.meta.env.DEV ? 'http://localhost:4000/api' : '/api');
 
 let googleInitialized = false;
 
@@ -87,6 +89,9 @@ async function handleGoogleResponse(response) {
     }
 
     // Send ID token to backend
+    console.log('API_URL:', API_URL);
+    console.log('Calling:', `${API_URL}/auth/google`);
+    
     const apiResponse = await fetch(`${API_URL}/auth/google`, {
       method: 'POST',
       headers: {
@@ -97,11 +102,15 @@ async function handleGoogleResponse(response) {
       }),
     });
 
+    console.log('Response status:', apiResponse.status);
+    console.log('Response headers:', Object.fromEntries(apiResponse.headers.entries()));
+
     // Check if response is JSON
     const contentType = apiResponse.headers.get('content-type');
     if (!contentType || !contentType.includes('application/json')) {
       const text = await apiResponse.text();
       console.error('Non-JSON response:', text);
+      console.error('Full URL was:', `${API_URL}/auth/google`);
       throw new Error('Server mengembalikan response tidak valid. Pastikan backend berjalan.');
     }
 
