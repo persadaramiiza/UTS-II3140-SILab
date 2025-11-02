@@ -1,6 +1,7 @@
 // Google OAuth Integration for SILab
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
+const API_URL = import.meta.env.VITE_API_URL || '/api';
 
 let googleInitialized = false;
 
@@ -86,7 +87,7 @@ async function handleGoogleResponse(response) {
     }
 
     // Send ID token to backend
-    const apiResponse = await fetch('http://localhost:4000/api/auth/google', {
+    const apiResponse = await fetch(`${API_URL}/auth/google`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
