@@ -864,7 +864,7 @@ export function initApp() {
     if (assignmentFileInput) assignmentFileInput.value = '';
     updateAuthUI();
     showLanding();
-    toast('Anda telah keluar.');
+    toast('Anda telah keluar.', 'info');
   }
 
   // Landing & auth events
@@ -904,7 +904,7 @@ export function initApp() {
     hideLogin();
     updateAuthUI();
     revealApp();
-    toast(`Selamat datang, ${state.auth.currentUser.name}`);
+    toast(`Selamat datang, ${state.auth.currentUser.name}`, 'success');
   });
 
   logoutBtn?.addEventListener('click', doLogout);
@@ -1204,7 +1204,7 @@ export function initApp() {
     updateAttachmentStatus();
     renderStudentAssignments();
     renderAssistantAssignments();
-    toast('Pengumpulan tersimpan.');
+    toast('Pengumpulan tersimpan.', 'success');
   });
 
   assistantSubmissionList?.addEventListener('click', (e) => {
@@ -1260,7 +1260,7 @@ export function initApp() {
     state.assignments.selectedSubmissionId = submission.id;
     renderAssistantAssignments();
     renderStudentAssignments();
-    toast('Penilaian tersimpan.');
+    toast('Penilaian tersimpan.', 'success');
   });
 
   gradeClear?.addEventListener('click', () => {
@@ -1859,6 +1859,21 @@ export function initApp() {
     });
   });
 
+  // Initialize diagram builder
+  function initializeDiagramBuilder() {
+    // Ensure select tool is active by default
+    const selectTool = $('#diagram-select-tool');
+    if (selectTool) {
+      $$('.tool-btn').forEach((b) => b.classList.remove('active'));
+      selectTool.classList.add('active');
+      state.diagram.tool = 'select';
+    }
+    
+    // Initial draw
+    drawDiagram();
+    updatePropertiesPanel();
+  }
+
   // Tool buttons
   $$('.tool-btn').forEach((btn) => {
     btn.addEventListener('click', () => {
@@ -1870,6 +1885,9 @@ export function initApp() {
       if (btn.id === 'diagram-delete-tool') state.diagram.tool = 'delete';
     });
   });
+
+  // Initialize diagram builder when page loads
+  setTimeout(initializeDiagramBuilder, 100);
 
   function addDiagramShape(type, x, y, w, h, fill, stroke, strokeWidth) {
     const id = uid();
@@ -1883,7 +1901,11 @@ export function initApp() {
       fill,
       stroke,
       strokeWidth: +strokeWidth,
-      text: type.charAt(0).toUpperCase() + type.slice(1)
+      text: type.charAt(0).toUpperCase() + type.slice(1),
+      fontSize: 14,
+      textColor: '#e6ecff',
+      rotation: 0,
+      locked: false
     };
     state.diagram.shapes.push(shape);
     drawDiagram();
@@ -1924,12 +1946,18 @@ export function initApp() {
       canvas.appendChild(line);
     });
 
-    // Draw shapes
     state.diagram.shapes.forEach((shape) => {
       const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
       g.classList.add('diagram-shape');
       g.dataset.id = shape.id;
       if (state.diagram.selected === shape.id) g.classList.add('selected');
+      if (state.diagram.resizing === shape.id) g.classList.add('resizing');
+
+      if (shape.rotation) {
+        const centerX = shape.x + shape.w / 2;
+        const centerY = shape.y + shape.h / 2;
+        g.setAttribute('transform', `rotate(${shape.rotation} ${centerX} ${centerY})`);
+      }
 
       const shapeEl = shapeTemplates[shape.type](
         shape.x,
@@ -1942,26 +1970,51 @@ export function initApp() {
       );
       g.innerHTML = shapeEl;
 
-      // Add text
       const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
       text.classList.add('diagram-text');
       text.setAttribute('x', shape.x + shape.w / 2);
       text.setAttribute('y', shape.y + shape.h / 2);
       text.setAttribute('text-anchor', 'middle');
       text.setAttribute('dominant-baseline', 'middle');
-      text.setAttribute('font-size', $('#diagram-font-size')?.value || 14);
+      text.setAttribute('font-size', shape.fontSize || 14);
+      text.setAttribute('fill', shape.textColor || '#e6ecff');
       text.textContent = shape.text || '';
+      text.style.pointerEvents = 'all';
+      text.style.userSelect = 'none';
+      
+      text.addEventListener('dblclick', (e) => {
+        e.stopPropagation();
+        editShapeText(shape, text);
+      });
+      
+
+      text.addEventListener('click', (e) => {
+        if (state.diagram.tool === 'text') {
+          e.stopPropagation();
+          editShapeText(shape, text);
+        }
+      });
+      
       g.appendChild(text);
 
-      // Events
+      if (state.diagram.selected === shape.id && state.diagram.tool === 'select') {
+        addResizeHandles(g, shape);
+      }
+
       g.addEventListener('mousedown', (e) => {
         e.stopPropagation();
         if (state.diagram.tool === 'select') {
           state.diagram.selected = shape.id;
+          
+          if (e.target.classList.contains('resize-handle')) {
+            return;
+          }
+          
           diagramDragging = true;
           diagramDragTarget = shape;
           const pt = getSVGPoint(canvas, e);
           diagramDragOffset = { x: pt.x - shape.x, y: pt.y - shape.y };
+          updatePropertiesPanel();
           drawDiagram();
         } else if (state.diagram.tool === 'connector') {
           if (!state.diagram.tempConnector) {
@@ -1980,19 +2033,121 @@ export function initApp() {
           state.diagram.connectors = state.diagram.connectors.filter(
             (c) => c.from !== shape.id && c.to !== shape.id
           );
-          drawDiagram();
-        }
-      });
-
-      g.addEventListener('dblclick', () => {
-        const newText = window.prompt('Enter text:', shape.text);
-        if (newText !== null) {
-          shape.text = newText;
+          if (state.diagram.selected === shape.id) {
+            state.diagram.selected = null;
+          }
+          updatePropertiesPanel();
           drawDiagram();
         }
       });
 
       canvas.appendChild(g);
+    });
+  }
+
+  function addResizeHandles(shapeGroup, shape) {
+    const handles = [
+      { x: shape.x, y: shape.y, cursor: 'nw-resize' }, // top-left
+      { x: shape.x + shape.w, y: shape.y, cursor: 'ne-resize' }, // top-right
+      { x: shape.x + shape.w, y: shape.y + shape.h, cursor: 'se-resize' }, // bottom-right
+      { x: shape.x, y: shape.y + shape.h, cursor: 'sw-resize' }, // bottom-left
+      { x: shape.x + shape.w / 2, y: shape.y, cursor: 'n-resize' }, // top
+      { x: shape.x + shape.w, y: shape.y + shape.h / 2, cursor: 'e-resize' }, // right
+      { x: shape.x + shape.w / 2, y: shape.y + shape.h, cursor: 's-resize' }, // bottom
+      { x: shape.x, y: shape.y + shape.h / 2, cursor: 'w-resize' } // left
+    ];
+
+    handles.forEach((handle, index) => {
+      const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+      rect.classList.add('resize-handle');
+      rect.setAttribute('x', handle.x - 4);
+      rect.setAttribute('y', handle.y - 4);
+      rect.setAttribute('width', 8);
+      rect.setAttribute('height', 8);
+      rect.setAttribute('rx', 2);
+      rect.style.cursor = handle.cursor;
+      rect.dataset.handleIndex = index;
+      
+      rect.addEventListener('mousedown', (e) => {
+        e.stopPropagation();
+        handleResizeStart(e, shape);
+      });
+      
+      shapeGroup.appendChild(rect);
+    });
+  }
+
+  function handleResizeStart(e, shape) {
+    e.stopPropagation();
+    state.diagram.resizing = shape.id;
+    state.diagram.resizeHandle = parseInt(e.target.dataset.handleIndex);
+    state.diagram.resizeStartPos = getSVGPoint(diagramCanvas, e);
+    state.diagram.resizeStartShape = { ...shape };
+    drawDiagram();
+  }
+
+  function editShapeText(shape, textElement) {
+    const existingEditors = diagramCanvas.querySelectorAll('foreignObject');
+    existingEditors.forEach(editor => editor.remove());
+    
+    const foreignObject = document.createElementNS('http://www.w3.org/2000/svg', 'foreignObject');
+    foreignObject.setAttribute('x', Math.max(0, shape.x + 5));
+    foreignObject.setAttribute('y', Math.max(0, shape.y + shape.h / 2 - 15));
+    foreignObject.setAttribute('width', Math.max(100, shape.w - 10));
+    foreignObject.setAttribute('height', 30);
+    foreignObject.style.overflow = 'visible';
+
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.value = shape.text || '';
+    input.style.cssText = `
+      width: 100%; 
+      height: 30px; 
+      border: 2px solid #7dd3fc; 
+      background: rgba(26, 30, 56, 0.95); 
+      color: #e6ecff; 
+      text-align: center; 
+      font-size: ${shape.fontSize || 14}px;
+      font-family: inherit;
+      border-radius: 4px;
+      outline: none;
+      padding: 0 8px;
+      box-sizing: border-box;
+    `;
+
+    foreignObject.appendChild(input);
+    diagramCanvas.appendChild(foreignObject);
+
+    setTimeout(() => {
+      input.focus();
+      input.select();
+    }, 10);
+
+    const finishEdit = () => {
+      const newText = input.value.trim();
+      shape.text = newText;
+      foreignObject.remove();
+      updatePropertiesPanel();
+      drawDiagram();
+      
+      if (window.showToast) {
+        showToast('Text updated successfully!', 'success');
+      }
+    };
+
+    const cancelEdit = () => {
+      foreignObject.remove();
+      drawDiagram();
+    };
+
+    input.addEventListener('blur', finishEdit);
+    input.addEventListener('keydown', (e) => {
+      e.stopPropagation();
+      if (e.key === 'Enter') {
+        finishEdit();
+      } else if (e.key === 'Escape') {
+        cancelEdit();
+      }
     });
   }
 
@@ -2002,18 +2157,87 @@ export function initApp() {
       diagramDragTarget.x = Math.max(0, pt.x - diagramDragOffset.x);
       diagramDragTarget.y = Math.max(0, pt.y - diagramDragOffset.y);
       drawDiagram();
+    } else if (state.diagram.resizing) {
+      const shape = state.diagram.shapes.find(s => s.id === state.diagram.resizing);
+      if (shape) {
+        handleResize(e, shape);
+      }
     }
   });
+
+  function handleResize(e, shape) {
+    const pt = getSVGPoint(diagramCanvas, e);
+    const handleIndex = state.diagram.resizeHandle;
+    const startPos = state.diagram.resizeStartPos;
+    const startShape = state.diagram.resizeStartShape;
+    
+    const dx = pt.x - startPos.x;
+    const dy = pt.y - startPos.y;
+    
+    const minSize = 20;
+    
+    switch (handleIndex) {
+      case 0: // top-left
+        shape.x = Math.min(startShape.x + dx, startShape.x + startShape.w - minSize);
+        shape.y = Math.min(startShape.y + dy, startShape.y + startShape.h - minSize);
+        shape.w = startShape.w - (shape.x - startShape.x);
+        shape.h = startShape.h - (shape.y - startShape.y);
+        break;
+      case 1: // top-right
+        shape.y = Math.min(startShape.y + dy, startShape.y + startShape.h - minSize);
+        shape.w = Math.max(minSize, startShape.w + dx);
+        shape.h = startShape.h - (shape.y - startShape.y);
+        break;
+      case 2: // bottom-right
+        shape.w = Math.max(minSize, startShape.w + dx);
+        shape.h = Math.max(minSize, startShape.h + dy);
+        break;
+      case 3: // bottom-left
+        shape.x = Math.min(startShape.x + dx, startShape.x + startShape.w - minSize);
+        shape.w = startShape.w - (shape.x - startShape.x);
+        shape.h = Math.max(minSize, startShape.h + dy);
+        break;
+      case 4: // top
+        shape.y = Math.min(startShape.y + dy, startShape.y + startShape.h - minSize);
+        shape.h = startShape.h - (shape.y - startShape.y);
+        break;
+      case 5: // right
+        shape.w = Math.max(minSize, startShape.w + dx);
+        break;
+      case 6: // bottom
+        shape.h = Math.max(minSize, startShape.h + dy);
+        break;
+      case 7: // left
+        shape.x = Math.min(startShape.x + dx, startShape.x + startShape.w - minSize);
+        shape.w = startShape.w - (shape.x - startShape.x);
+        break;
+    }
+    
+    // Ensure minimum size
+    shape.w = Math.max(minSize, shape.w);
+    shape.h = Math.max(minSize, shape.h);
+    
+    drawDiagram();
+  }
 
   diagramCanvas?.addEventListener('mouseup', () => {
     diagramDragging = false;
     diagramDragTarget = null;
+    
+    if (state.diagram.resizing) {
+      state.diagram.resizing = null;
+      state.diagram.resizeHandle = null;
+      state.diagram.resizeStartPos = null;
+      state.diagram.resizeStartShape = null;
+      drawDiagram();
+    }
   });
 
   diagramCanvas?.addEventListener('click', (e) => {
     if (e.target === diagramCanvas) {
       state.diagram.selected = null;
       state.diagram.tempConnector = null;
+      updatePropertiesPanel();
       drawDiagram();
     }
 
@@ -2021,8 +2245,13 @@ export function initApp() {
       const pt = getSVGPoint(diagramCanvas, e);
       const text = window.prompt('Enter text:');
       if (text) {
+        const fill = $('#diagram-fill')?.value || '#7dd3fc';
+        const stroke = $('#diagram-stroke')?.value || '#3b82f6';
+        const sw = $('#diagram-stroke-width')?.value || 2;
+        const fontSize = $('#diagram-font-size')?.value || 14;
+        
         const id = uid();
-        state.diagram.shapes.push({
+        const shape = {
           id,
           type: 'rectangle',
           x: pt.x - 60,
@@ -2030,10 +2259,17 @@ export function initApp() {
           w: 120,
           h: 40,
           fill: 'transparent',
-          stroke: '#3b82f6',
-          strokeWidth: 2,
-          text
-        });
+          stroke,
+          strokeWidth: +sw,
+          text,
+          fontSize: +fontSize,
+          textColor: '#e6ecff',
+          rotation: 0,
+          locked: false
+        };
+        state.diagram.shapes.push(shape);
+        state.diagram.selected = shape.id;
+        updatePropertiesPanel();
         drawDiagram();
       }
     }
@@ -2046,6 +2282,40 @@ export function initApp() {
     pt.y = evt.clientY;
     return pt.matrixTransform(svg.getScreenCTM().inverse());
   }
+
+  // Debug function for testing diagram builder
+  window.testDiagramBuilder = () => {
+    console.log('Testing diagram builder...');
+    console.log('Canvas:', diagramCanvas);
+    console.log('State:', state.diagram);
+    console.log('Current tool:', state.diagram.tool);
+    console.log('Shapes:', state.diagram.shapes.length);
+    
+    // Add a test shape if none exist
+    if (state.diagram.shapes.length === 0) {
+      const testShape = {
+        id: uid(),
+        type: 'rectangle',
+        x: 100,
+        y: 100,
+        w: 120,
+        h: 80,
+        fill: '#7dd3fc',
+        stroke: '#3b82f6',
+        strokeWidth: 2,
+        text: 'Test Shape',
+        fontSize: 14,
+        textColor: '#e6ecff',
+        rotation: 0,
+        locked: false
+      };
+      state.diagram.shapes.push(testShape);
+      state.diagram.selected = testShape.id;
+      drawDiagram();
+      updatePropertiesPanel();
+      console.log('Added test shape:', testShape);
+    }
+  };
 
   // Export functions
   $('#diagram-export-svg')?.addEventListener('click', () => {
@@ -2082,6 +2352,128 @@ export function initApp() {
     }
   });
 
+  // Properties panel updates
+  function updatePropertiesPanel() {
+    const shapeProps = $('#shape-props');
+    const defaultProps = $('#default-props');
+    
+    if (state.diagram.selected) {
+      const shape = state.diagram.shapes.find(s => s.id === state.diagram.selected);
+      if (shape) {
+        shapeProps.style.display = 'block';
+        defaultProps.style.display = 'none';
+        
+        // Update property controls with shape values
+        const fillInput = $('#shape-fill');
+        const strokeInput = $('#shape-stroke');
+        const strokeWidthInput = $('#shape-stroke-width');
+        const fontSizeInput = $('#shape-font-size');
+        const textColorInput = $('#shape-text-color');
+        const rotationInput = $('#shape-rotation');
+        const widthInput = $('#shape-width');
+        const heightInput = $('#shape-height');
+        
+        if (fillInput) fillInput.value = shape.fill;
+        if (strokeInput) strokeInput.value = shape.stroke;
+        if (strokeWidthInput) {
+          strokeWidthInput.value = shape.strokeWidth;
+          const valueSpan = $('#stroke-width-value');
+          if (valueSpan) valueSpan.textContent = shape.strokeWidth;
+        }
+        if (fontSizeInput) {
+          fontSizeInput.value = shape.fontSize || 14;
+          const valueSpan = $('#font-size-value');
+          if (valueSpan) valueSpan.textContent = shape.fontSize || 14;
+        }
+        if (textColorInput) textColorInput.value = shape.textColor || '#e6ecff';
+        if (rotationInput) {
+          rotationInput.value = shape.rotation || 0;
+          const valueSpan = $('#rotation-value');
+          if (valueSpan) valueSpan.textContent = (shape.rotation || 0) + '°';
+        }
+        if (widthInput) widthInput.value = shape.w;
+        if (heightInput) heightInput.value = shape.h;
+      }
+    } else {
+      shapeProps.style.display = 'none';
+      defaultProps.style.display = 'block';
+    }
+  }
+
+  // Add event listeners for shape property changes
+  ['shape-fill', 'shape-stroke', 'shape-text-color'].forEach(id => {
+    const input = $(`#${id}`);
+    if (input) {
+      input.addEventListener('input', (e) => {
+        const shape = state.diagram.shapes.find(s => s.id === state.diagram.selected);
+        if (shape) {
+          if (id === 'shape-fill') shape.fill = e.target.value;
+          else if (id === 'shape-stroke') shape.stroke = e.target.value;
+          else if (id === 'shape-text-color') shape.textColor = e.target.value;
+          drawDiagram();
+        }
+      });
+    }
+  });
+
+  ['shape-stroke-width', 'shape-font-size', 'shape-rotation'].forEach(id => {
+    const input = $(`#${id}`);
+    if (input) {
+      input.addEventListener('input', (e) => {
+        const shape = state.diagram.shapes.find(s => s.id === state.diagram.selected);
+        if (shape) {
+          const value = parseInt(e.target.value);
+          if (id === 'shape-stroke-width') {
+            shape.strokeWidth = value;
+            const valueSpan = $('#stroke-width-value');
+            if (valueSpan) valueSpan.textContent = value;
+          } else if (id === 'shape-font-size') {
+            shape.fontSize = value;
+            const valueSpan = $('#font-size-value');
+            if (valueSpan) valueSpan.textContent = value;
+          } else if (id === 'shape-rotation') {
+            shape.rotation = value;
+            const valueSpan = $('#rotation-value');
+            if (valueSpan) valueSpan.textContent = value + '°';
+          }
+          drawDiagram();
+        }
+      });
+    }
+  });
+
+  ['shape-width', 'shape-height'].forEach(id => {
+    const input = $(`#${id}`);
+    if (input) {
+      input.addEventListener('input', (e) => {
+        const shape = state.diagram.shapes.find(s => s.id === state.diagram.selected);
+        if (shape) {
+          const value = Math.max(20, parseInt(e.target.value) || 20);
+          if (id === 'shape-width') shape.w = value;
+          else if (id === 'shape-height') shape.h = value;
+          drawDiagram();
+        }
+      });
+    }
+  });
+
+  // Update default property value displays
+  const strokeWidthDefault = $('#diagram-stroke-width');
+  if (strokeWidthDefault) {
+    strokeWidthDefault.addEventListener('input', (e) => {
+      const valueSpan = $('#default-stroke-width-value');
+      if (valueSpan) valueSpan.textContent = e.target.value;
+    });
+  }
+
+  const fontSizeDefault = $('#diagram-font-size');
+  if (fontSizeDefault) {
+    fontSizeDefault.addEventListener('input', (e) => {
+      const valueSpan = $('#default-font-size-value');
+      if (valueSpan) valueSpan.textContent = e.target.value;
+    });
+  }
+
   // Keyboard shortcuts
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Delete' && state.diagram.selected) {
@@ -2090,6 +2482,12 @@ export function initApp() {
         (c) => c.from !== state.diagram.selected && c.to !== state.diagram.selected
       );
       state.diagram.selected = null;
+      updatePropertiesPanel();
+      drawDiagram();
+    } else if (e.key === 'Escape') {
+      state.diagram.selected = null;
+      state.diagram.tempConnector = null;
+      updatePropertiesPanel();
       drawDiagram();
     }
   });
@@ -2766,7 +3164,7 @@ export function initApp() {
   // ====== Save/Load/Export/Reset ======
   $('#saveAll')?.addEventListener('click', () => {
     localStorage.setItem('si_suite', JSON.stringify(buildSerializableState()));
-    toast('Saved');
+    toast('Data berhasil disimpan', 'success');
   });
   $('#loadAll')?.addEventListener('click', () => {
     const raw = localStorage.getItem('si_suite');
@@ -2839,7 +3237,7 @@ export function initApp() {
     ensureAssignmentOptions();
     updateAuthUI();
     updateAttachmentStatus();
-    toast('Loaded');
+    toast('Data berhasil dimuat', 'success');
   });
   $('#exportAll')?.addEventListener('click', () => {
     downloadBlob(
@@ -2896,8 +3294,89 @@ export function initApp() {
     a.click();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
-  function toast(msg) {
+  function toast(msg, type = 'info') {
     if (window?.console) console.log(msg);
+    
+    // Create toast container if it doesn't exist
+    let toastContainer = document.getElementById('toast-container');
+    if (!toastContainer) {
+      toastContainer = document.createElement('div');
+      toastContainer.id = 'toast-container';
+      toastContainer.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        z-index: 10000;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        pointer-events: none;
+      `;
+      document.body.appendChild(toastContainer);
+    }
+    
+    // Create toast element
+    const toastEl = document.createElement('div');
+    toastEl.className = `toast toast-${type}`;
+    toastEl.style.cssText = `
+      background: linear-gradient(135deg, var(--bg-card), var(--bg-card-hover));
+      border: 1px solid var(--border-bright);
+      border-radius: var(--radius-md);
+      padding: 12px 16px;
+      color: var(--text-primary);
+      font-size: 14px;
+      font-weight: 500;
+      box-shadow: var(--shadow-lg);
+      backdrop-filter: blur(20px);
+      transform: translateX(100%);
+      transition: all var(--transition-base);
+      pointer-events: auto;
+      max-width: 300px;
+      position: relative;
+      overflow: hidden;
+    `;
+    
+    // Add type-specific styling
+    if (type === 'success') {
+      toastEl.style.borderColor = 'var(--success)';
+      toastEl.style.background = 'linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(16, 185, 129, 0.05))';
+    } else if (type === 'error') {
+      toastEl.style.borderColor = 'var(--danger)';
+      toastEl.style.background = 'linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(239, 68, 68, 0.05))';
+    } else if (type === 'warning') {
+      toastEl.style.borderColor = 'var(--warning)';
+      toastEl.style.background = 'linear-gradient(135deg, rgba(245, 158, 11, 0.1), rgba(245, 158, 11, 0.05))';
+    }
+    
+    toastEl.textContent = msg;
+    toastContainer.appendChild(toastEl);
+    
+    // Animate in
+    requestAnimationFrame(() => {
+      toastEl.style.transform = 'translateX(0)';
+    });
+    
+    // Auto remove after 3 seconds
+    setTimeout(() => {
+      toastEl.style.transform = 'translateX(100%)';
+      toastEl.style.opacity = '0';
+      setTimeout(() => {
+        if (toastEl.parentNode) {
+          toastEl.parentNode.removeChild(toastEl);
+        }
+      }, 300);
+    }, 3000);
+    
+    // Click to dismiss
+    toastEl.addEventListener('click', () => {
+      toastEl.style.transform = 'translateX(100%)';
+      toastEl.style.opacity = '0';
+      setTimeout(() => {
+        if (toastEl.parentNode) {
+          toastEl.parentNode.removeChild(toastEl);
+        }
+      }, 300);
+    });
   }
 
   // initial draws
@@ -2905,6 +3384,7 @@ export function initApp() {
   drawEA();
   redrawIXD();
   drawDiagram();
+  updatePropertiesPanel();
   drawERD();
   initQuiz();
 

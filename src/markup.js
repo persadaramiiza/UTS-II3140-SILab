@@ -550,18 +550,51 @@ export const appMarkup = `
       <div class="card">
         <h3>Properties</h3>
         <div id="diagram-props">
-          <label>Fill Color
-            <input type="color" id="diagram-fill" value="#7dd3fc">
-          </label>
-          <label>Stroke Color
-            <input type="color" id="diagram-stroke" value="#3b82f6">
-          </label>
-          <label>Stroke Width
-            <input type="range" id="diagram-stroke-width" min="1" max="8" value="2">
-          </label>
-          <label>Font Size
-            <input type="range" id="diagram-font-size" min="10" max="32" value="14">
-          </label>
+          <div id="shape-props" style="display:none;">
+            <label>Fill Color
+              <input type="color" id="shape-fill" value="#7dd3fc">
+            </label>
+            <label>Stroke Color
+              <input type="color" id="shape-stroke" value="#3b82f6">
+            </label>
+            <label>Stroke Width
+              <input type="range" id="shape-stroke-width" min="1" max="8" value="2">
+              <span id="stroke-width-value">2</span>
+            </label>
+            <label>Font Size
+              <input type="range" id="shape-font-size" min="8" max="48" value="14">
+              <span id="font-size-value">14</span>
+            </label>
+            <label>Text Color
+              <input type="color" id="shape-text-color" value="#e6ecff">
+            </label>
+            <label>Rotation
+              <input type="range" id="shape-rotation" min="0" max="360" value="0">
+              <span id="rotation-value">0°</span>
+            </label>
+            <label>Width
+              <input type="number" id="shape-width" min="20" max="500" value="120">
+            </label>
+            <label>Height
+              <input type="number" id="shape-height" min="20" max="500" value="80">
+            </label>
+          </div>
+          <div id="default-props">
+            <label>Fill Color
+              <input type="color" id="diagram-fill" value="#7dd3fc">
+            </label>
+            <label>Stroke Color
+              <input type="color" id="diagram-stroke" value="#3b82f6">
+            </label>
+            <label>Stroke Width
+              <input type="range" id="diagram-stroke-width" min="1" max="8" value="2">
+              <span id="default-stroke-width-value">2</span>
+            </label>
+            <label>Font Size
+              <input type="range" id="diagram-font-size" min="8" max="48" value="14">
+              <span id="default-font-size-value">14</span>
+            </label>
+          </div>
         </div>
       </div>
 
@@ -588,6 +621,20 @@ export const appMarkup = `
 
     <section class="content">
       <h2>Diagram Canvas</h2>
+      <div class="diagram-help">
+        <div class="help-item">
+          <strong>💡 Quick Tips:</strong>
+          <span>Select tool → Click shape → Drag blue handles to resize</span>
+        </div>
+        <div class="help-item">
+          <strong>✏️ Edit Text:</strong>
+          <span>Double-click any shape to edit text</span>
+        </div>
+        <div class="help-item">
+          <strong>🔗 Connect:</strong>
+          <span>Use connector tool to link shapes</span>
+        </div>
+      </div>
       <div class="diagram-canvas-wrapper">
         <svg id="diagram-canvas" class="diagram-canvas" width="100%" height="600">
           <defs>
