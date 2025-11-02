@@ -48,11 +48,23 @@ body{
   border-bottom:2px solid var(--secondary);
 }
 .landing-logo{
-  display:flex; align-items:center; gap:12px; 
-  font-size:20px; font-weight:700; 
-  background:linear-gradient(135deg, var(--secondary) 0%, #f39c12 100%);
-  -webkit-background-clip:text; -webkit-text-fill-color:transparent;
-  background-clip:text;
+  background-image: url('/logo1.png');
+  background-repeat: no-repeat;
+  background-position: left center;
+  background-size: 40px 40px; 
+  padding-left: 52px; 
+  min-height: 40px;
+  
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-light);
+}
+
+.landing-logo svg {
+  display: none; 
 }
 
 .hero{

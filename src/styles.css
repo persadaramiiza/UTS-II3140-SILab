@@ -73,13 +73,29 @@ body{
   border-bottom:1px solid rgba(253,183,26,0.3);
 }
 .landing-logo{
-  display:flex; align-items:center; gap:14px;
-  font-size:18px; font-weight:700;
-  background:linear-gradient(135deg, var(--secondary) 0%, #f39c12 100%);
-  -webkit-background-clip:text; -webkit-text-fill-color:transparent;
-  background-clip:text;
+  /* Logo custom image dari src/assets/logo1.png */
+  background-image: url('/logo1.png');
+  background-repeat: no-repeat;
+  background-position: left center;
+  background-size: 40px 40px; 
+  padding-left: 52px; 
+  min-height: 40px;
+  
+  /* Layout dan styling */
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-light);
   transition:all 0.3s ease;
 }
+
+/* Hide SVG ketika menggunakan background-image */
+.landing-logo svg {
+  display: none; 
+}
+
 .landing-logo:hover{
   transform:translateX(2px);
 }
