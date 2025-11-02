@@ -23,16 +23,31 @@ async function ensureStoreInitialized() {
 const app = express();
 
 // Configure CORS
-const allowedOrigins = config.corsOrigin === '*' 
-  ? '*' 
-  : config.corsOrigin.split(',').map(o => o.trim());
+const allowedOrigins =
+  config.corsOrigin === '*'
+    ? ['*']
+    : config.corsOrigin.split(',').map((o) => o.trim()).filter(Boolean);
+
+const isOriginAllowed = (origin) => {
+  if (!origin) return true;
+  return allowedOrigins.some((allowed) => {
+    if (allowed === '*') return true;
+    if (allowed === origin) return true;
+    if (allowed.includes('*')) {
+      const escaped = allowed.replace(/[.+?^${}()|[\]\\]/g, '\\$&');
+      const regex = new RegExp(`^${escaped.replace(/\\\*/g, '.*')}$`);
+      return regex.test(origin);
+    }
+    return false;
+  });
+};
 
 app.use(
   cors({
     origin: (origin, callback) => {
       if (!origin) return callback(null, true);
       
-      if (allowedOrigins === '*' || allowedOrigins.includes(origin)) {
+      if (isOriginAllowed(origin)) {
         callback(null, true);
       } else {
         callback(new Error('Not allowed by CORS'));

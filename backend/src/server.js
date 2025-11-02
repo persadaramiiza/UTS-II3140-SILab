@@ -18,17 +18,32 @@ async function bootstrap() {
   const app = express();
 
   // Configure CORS to handle multiple origins
-  const allowedOrigins = config.corsOrigin === '*' 
-    ? '*' 
-    : config.corsOrigin.split(',').map(o => o.trim());
+  const allowedOrigins =
+    config.corsOrigin === '*'
+      ? ['*']
+      : config.corsOrigin.split(',').map((o) => o.trim()).filter(Boolean);
+
+  const isOriginAllowed = (origin) => {
+    if (!origin) return true;
+    return allowedOrigins.some((allowed) => {
+      if (allowed === '*') return true;
+      if (allowed === origin) return true;
+      if (allowed.includes('*')) {
+        const escaped = allowed.replace(/[.+?^${}()|[\]\\]/g, '\\$&');
+        const regex = new RegExp(`^${escaped.replace(/\\\*/g, '.*')}$`);
+        return regex.test(origin);
+      }
+      return false;
+    });
+  };
 
   app.use(
     cors({
       origin: (origin, callback) => {
         // Allow requests with no origin (like mobile apps, Postman, curl)
         if (!origin) return callback(null, true);
-        
-        if (allowedOrigins === '*' || allowedOrigins.includes(origin)) {
+
+        if (isOriginAllowed(origin)) {
           callback(null, true);
         } else {
           callback(new Error('Not allowed by CORS'));
@@ -63,4 +78,3 @@ bootstrap().catch((err) => {
   console.error('Failed to start server', err);
   process.exit(1);
 });
-
