@@ -97,6 +97,14 @@ async function handleGoogleResponse(response) {
       }),
     });
 
+    // Check if response is JSON
+    const contentType = apiResponse.headers.get('content-type');
+    if (!contentType || !contentType.includes('application/json')) {
+      const text = await apiResponse.text();
+      console.error('Non-JSON response:', text);
+      throw new Error('Server mengembalikan response tidak valid. Pastikan backend berjalan.');
+    }
+
     const data = await apiResponse.json();
 
     if (!apiResponse.ok) {
