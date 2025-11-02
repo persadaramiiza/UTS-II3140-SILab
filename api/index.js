@@ -23,10 +23,21 @@ async function ensureStoreInitialized() {
 const app = express();
 
 // Configure CORS
-const allowedOrigins =
+const fromEnv =
   config.corsOrigin === '*'
     ? ['*']
-    : config.corsOrigin.split(',').map((o) => o.trim()).filter(Boolean);
+    : config.corsOrigin
+        .split(',')
+        .map((o) => o.trim())
+        .filter(Boolean);
+
+const vercelDerivedOrigins = [
+  process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null,
+  process.env.VERCEL_BRANCH_URL ? `https://${process.env.VERCEL_BRANCH_URL}` : null,
+  process.env.URL ? `https://${process.env.URL}` : null
+].filter(Boolean);
+
+const allowedOrigins = Array.from(new Set([...fromEnv, ...vercelDerivedOrigins]));
 
 const isOriginAllowed = (origin) => {
   if (!origin) return true;
