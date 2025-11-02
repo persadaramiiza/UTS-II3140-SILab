@@ -5,6 +5,11 @@ import { config } from '../config.js';
 
 let stateCache = null;
 let initPromise = null;
+let memoryOnly = false;
+
+function cloneState(state) {
+  return JSON.parse(JSON.stringify(state));
+}
 
 function buildDefaultData() {
   const hash = (password) => bcrypt.hashSync(password, 10);
@@ -59,24 +64,80 @@ function buildDefaultData() {
   };
 }
 
+function isReadOnlyError(error) {
+  return ['EROFS', 'EACCES', 'EPERM'].includes(error?.code);
+}
+
+function enableMemoryStore(reason) {
+  if (!memoryOnly) {
+    memoryOnly = true;
+    console.warn('[Store] Falling back to in-memory data store:', reason);
+    if (!stateCache) {
+      stateCache = buildDefaultData();
+    }
+  }
+}
+
 async function ensureDataFile() {
-  await mkdir(config.dataDir, { recursive: true });
+  if (memoryOnly) return;
+
+  try {
+    await mkdir(config.dataDir, { recursive: true });
+  } catch (err) {
+    if (isReadOnlyError(err)) {
+      enableMemoryStore(err.message);
+      return;
+    }
+    throw err;
+  }
+
   try {
     await access(config.dataFile, fsConstants.F_OK);
   } catch (err) {
-    const defaults = buildDefaultData();
-    await writeFile(config.dataFile, JSON.stringify(defaults, null, 2), 'utf-8');
-    stateCache = defaults;
+    if (isReadOnlyError(err)) {
+      enableMemoryStore(err.message);
+      return;
+    }
+
+    if (err.code === 'ENOENT') {
+      const defaults = buildDefaultData();
+      try {
+        await writeFile(config.dataFile, JSON.stringify(defaults, null, 2), 'utf-8');
+        stateCache = cloneState(defaults);
+      } catch (writeErr) {
+        if (isReadOnlyError(writeErr)) {
+          enableMemoryStore(writeErr.message);
+          return;
+        }
+        throw writeErr;
+      }
+    } else {
+      throw err;
+    }
   }
 }
 
 async function loadState() {
   if (stateCache) return stateCache;
   await ensureDataFile();
+
   if (stateCache) return stateCache;
-  const contents = await readFile(config.dataFile, 'utf-8');
-  stateCache = JSON.parse(contents);
-  return stateCache;
+  if (memoryOnly) {
+    stateCache = buildDefaultData();
+    return stateCache;
+  }
+
+  try {
+    const contents = await readFile(config.dataFile, 'utf-8');
+    stateCache = JSON.parse(contents);
+    return stateCache;
+  } catch (err) {
+    if (isReadOnlyError(err)) {
+      enableMemoryStore(err.message);
+      return stateCache;
+    }
+    throw err;
+  }
 }
 
 export async function initStore() {
@@ -91,14 +152,28 @@ export async function getState() {
   return stateCache;
 }
 
+async function persistToFile() {
+  if (memoryOnly) return;
+
+  try {
+    await writeFile(config.dataFile, JSON.stringify(stateCache, null, 2), 'utf-8');
+  } catch (err) {
+    if (isReadOnlyError(err)) {
+      enableMemoryStore(err.message);
+      return;
+    }
+    throw err;
+  }
+}
+
 export async function writeState(newState) {
-  stateCache = newState;
-  await writeFile(config.dataFile, JSON.stringify(stateCache, null, 2), 'utf-8');
+  stateCache = memoryOnly ? cloneState(newState) : newState;
+  await persistToFile();
   return stateCache;
 }
 
 export async function persist() {
-  await writeFile(config.dataFile, JSON.stringify(stateCache, null, 2), 'utf-8');
+  await persistToFile();
 }
 
 export async function findUserByUsername(username) {
@@ -119,13 +194,13 @@ export async function findUserByEmail(email) {
 export async function upsertUser(user) {
   const state = await getState();
   const index = state.users.findIndex((u) => u.id === user.id);
-  
+
   if (index >= 0) {
     state.users[index] = { ...state.users[index], ...user };
   } else {
     state.users.push(user);
   }
-  
+
   await persist();
   return user;
 }
@@ -156,5 +231,6 @@ export async function setSubmissions(submissions) {
   const state = await getState();
   state.submissions = submissions;
   await persist();
-  return state.submissions.slice();
+
+  return memoryOnly ? state.submissions.map((item) => ({ ...item })) : state.submissions.slice();
 }
