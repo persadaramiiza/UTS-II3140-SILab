@@ -91,7 +91,14 @@ body{
   font-size:clamp(16px,2vw,20px); line-height:1.7; 
   color:var(--text-muted); margin-bottom:36px; max-width:540px;
 }
-.hero-cta{display:flex; gap:16px; margin-bottom:48px; flex-wrap:wrap}
+.hero-cta{
+  display:flex; 
+  gap:16px; 
+  margin-bottom:48px; 
+  flex-wrap:wrap;
+  justify-content:center;
+  align-items:center;
+}
 .cta-btn{
   background:linear-gradient(135deg,var(--secondary),#f39c12); 
   color:#0d1b2a; font-weight:700; padding:14px 32px; 
