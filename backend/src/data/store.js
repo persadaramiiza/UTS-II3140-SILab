@@ -84,8 +84,8 @@ async function ensureDataFile() {
   try {
     await mkdir(config.dataDir, { recursive: true });
   } catch (err) {
-    if (isReadOnlyError(err)) {
-      enableMemoryStore(err.message);
+    if (isReadOnlyError(err) || err.code === 'ENOENT') {
+      enableMemoryStore(err.message || err.code);
       return;
     }
     throw err;
