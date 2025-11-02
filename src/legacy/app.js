@@ -2283,7 +2283,87 @@ export function initApp() {
     return pt.matrixTransform(svg.getScreenCTM().inverse());
   }
 
-  // Debug function for testing diagram builder
+  //======Splash Screen=====
+  function initSplashScreen() {
+    const splashScreen = $('#splash-screen');
+    if (!splashScreen) return;
+    
+    splashScreen.style.display = 'flex';
+    
+    const hideSplash = () => {
+      setTimeout(() => {
+        splashScreen.classList.add('fade-out');
+        setTimeout(() => {
+          splashScreen.style.display = 'none';
+        }, 800);
+      }, 3500);
+    };
+    
+    if (document.readyState === 'complete') {
+      hideSplash();
+    } else {
+      window.addEventListener('load', hideSplash);
+    }
+    
+    splashScreen.addEventListener('click', () => {
+      splashScreen.classList.add('fade-out');
+      setTimeout(() => {
+        splashScreen.style.display = 'none';
+      }, 300);
+    });
+  }
+
+  initSplashScreen();
+  
+  function enhanceSplashExperience() {
+    const logo = $('.splash-logo');
+    const title = $('.splash-title');
+    
+    if (logo) {
+      logo.addEventListener('click', () => {
+        logo.style.animation = 'none';
+        logo.offsetHeight;
+        logo.style.animation = 'logoFloat 0.6s ease-out';
+      });
+    }
+    
+    if (title) {
+      const originalText = title.textContent;
+      title.textContent = '';
+      let i = 0;
+      
+      const typeWriter = () => {
+        if (i < originalText.length) {
+          title.textContent += originalText.charAt(i);
+          i++;
+          setTimeout(typeWriter, 100);
+        }
+      };
+      
+      setTimeout(typeWriter, 1000);
+    }
+    
+    const particlesContainer = $('.splash-particles');
+    if (particlesContainer) {
+      setInterval(() => {
+        const particle = document.createElement('div');
+        particle.className = 'particle';
+        particle.style.left = Math.random() * 100 + '%';
+        particle.style.animationDuration = (Math.random() * 4 + 4) + 's';
+        particle.style.animationDelay = '0s';
+        particlesContainer.appendChild(particle);
+        
+        setTimeout(() => {
+          if (particle.parentNode) {
+            particle.parentNode.removeChild(particle);
+          }
+        }, 8000);
+      }, 800);
+    }
+  }
+  
+  setTimeout(enhanceSplashExperience, 500);
+
   window.testDiagramBuilder = () => {
     console.log('Testing diagram builder...');
     console.log('Canvas:', diagramCanvas);
@@ -2291,7 +2371,6 @@ export function initApp() {
     console.log('Current tool:', state.diagram.tool);
     console.log('Shapes:', state.diagram.shapes.length);
     
-    // Add a test shape if none exist
     if (state.diagram.shapes.length === 0) {
       const testShape = {
         id: uid(),
@@ -2317,7 +2396,6 @@ export function initApp() {
     }
   };
 
-  // Export functions
   $('#diagram-export-svg')?.addEventListener('click', () => {
     if (!diagramCanvas) return;
     const clone = diagramCanvas.cloneNode(true);
@@ -2352,7 +2430,6 @@ export function initApp() {
     }
   });
 
-  // Properties panel updates
   function updatePropertiesPanel() {
     const shapeProps = $('#shape-props');
     const defaultProps = $('#default-props');
@@ -2363,7 +2440,6 @@ export function initApp() {
         shapeProps.style.display = 'block';
         defaultProps.style.display = 'none';
         
-        // Update property controls with shape values
         const fillInput = $('#shape-fill');
         const strokeInput = $('#shape-stroke');
         const strokeWidthInput = $('#shape-stroke-width');
@@ -2400,7 +2476,6 @@ export function initApp() {
     }
   }
 
-  // Add event listeners for shape property changes
   ['shape-fill', 'shape-stroke', 'shape-text-color'].forEach(id => {
     const input = $(`#${id}`);
     if (input) {
@@ -2457,7 +2532,6 @@ export function initApp() {
     }
   });
 
-  // Update default property value displays
   const strokeWidthDefault = $('#diagram-stroke-width');
   if (strokeWidthDefault) {
     strokeWidthDefault.addEventListener('input', (e) => {
@@ -2474,7 +2548,6 @@ export function initApp() {
     });
   }
 
-  // Keyboard shortcuts
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Delete' && state.diagram.selected) {
       state.diagram.shapes = state.diagram.shapes.filter((s) => s.id !== state.diagram.selected);
@@ -3170,7 +3243,6 @@ export function initApp() {
     const raw = localStorage.getItem('si_suite');
     if (!raw) return toast('No saved data');
     const data = JSON.parse(raw);
-    // shallow merge and redraw
     Object.assign(state.req, data.req || {});
     Object.assign(state.ea, data.ea || {});
     Object.assign(state.ixd, data.ixd || {});
@@ -3227,7 +3299,6 @@ export function initApp() {
       state.auth.currentUser = null;
     }
 
-    // redraw all
     drawReq();
     drawEA();
     redrawIXD();
@@ -3297,7 +3368,6 @@ export function initApp() {
   function toast(msg, type = 'info') {
     if (window?.console) console.log(msg);
     
-    // Create toast container if it doesn't exist
     let toastContainer = document.getElementById('toast-container');
     if (!toastContainer) {
       toastContainer = document.createElement('div');
@@ -3315,7 +3385,6 @@ export function initApp() {
       document.body.appendChild(toastContainer);
     }
     
-    // Create toast element
     const toastEl = document.createElement('div');
     toastEl.className = `toast toast-${type}`;
     toastEl.style.cssText = `
@@ -3336,7 +3405,6 @@ export function initApp() {
       overflow: hidden;
     `;
     
-    // Add type-specific styling
     if (type === 'success') {
       toastEl.style.borderColor = 'var(--success)';
       toastEl.style.background = 'linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(16, 185, 129, 0.05))';
@@ -3351,12 +3419,10 @@ export function initApp() {
     toastEl.textContent = msg;
     toastContainer.appendChild(toastEl);
     
-    // Animate in
     requestAnimationFrame(() => {
       toastEl.style.transform = 'translateX(0)';
     });
     
-    // Auto remove after 3 seconds
     setTimeout(() => {
       toastEl.style.transform = 'translateX(100%)';
       toastEl.style.opacity = '0';
@@ -3367,7 +3433,6 @@ export function initApp() {
       }, 300);
     }, 3000);
     
-    // Click to dismiss
     toastEl.addEventListener('click', () => {
       toastEl.style.transform = 'translateX(100%)';
       toastEl.style.opacity = '0';
@@ -3379,7 +3444,6 @@ export function initApp() {
     });
   }
 
-  // initial draws
   drawReq();
   drawEA();
   redrawIXD();

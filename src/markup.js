@@ -1,4 +1,33 @@
 export const appMarkup = `
+<!-- Splash Screen -->
+<div id="splash-screen" class="splash-screen">
+  <div class="splash-container">
+    <div class="splash-logo-wrapper">
+      <img src="/logo1.png" alt="SILab Suite Logo" class="splash-logo" />
+      <div class="splash-glow"></div>
+    </div>
+    <div class="splash-content">
+      <h1 class="splash-title">SILab Suite</h1>
+      <p class="splash-subtitle">Information System Laboratory</p>
+      <div class="splash-tagline">Virtual Lab Environment</div>
+    </div>
+    <div class="splash-loader">
+      <div class="loader-bar">
+        <div class="loader-progress"></div>
+      </div>
+      <div class="loader-text">Loading...</div>
+    </div>
+  </div>
+  <div class="splash-particles">
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+  </div>
+</div>
+
 <div id="auth-modal" class="auth-modal is-hidden" role="dialog" aria-modal="true" aria-labelledby="auth-title">
   <div class="auth-card">
     <button type="button" class="auth-close" id="loginClose" aria-label="Tutup dialog login">&times;</button>
