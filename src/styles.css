@@ -433,7 +433,12 @@ body{
   
   /* App navbar responsive */
   .app-navbar{padding:12px 3%; flex-wrap:wrap; gap:12px}
-  .app-logo{font-size:18px}
+  .app-logo{
+    font-size:18px; 
+    background-size: 28px 28px; 
+    padding-left: 38px; 
+    min-height: 28px;
+  }
   .app-nav-center{order:3; width:100%; justify-content:flex-start}
   .app-nav-controls{flex-wrap:wrap; justify-content:flex-start}
   .nav-btn{padding:6px 10px; font-size:12px}
@@ -467,6 +472,15 @@ body{
 }
 
 .app-logo{
+  /* Logo custom image dari public/logo1.png */
+  background-image: url('/logo1.png');
+  background-repeat: no-repeat;
+  background-position: left center;
+  background-size: 32px 32px; 
+  padding-left: 44px; 
+  min-height: 32px;
+  
+  /* Layout dan styling */
   display:flex; 
   align-items:center; 
   gap:12px;

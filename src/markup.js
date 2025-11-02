@@ -324,17 +324,6 @@ export const appMarkup = `
 <header class="app-header">
   <nav class="app-navbar">
     <div class="app-logo">
-      <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <rect width="32" height="32" rx="8" fill="url(#logo-gradient)"/>
-        <path d="M16 8L24 12V20L16 24L8 20V12L16 8Z" stroke="white" stroke-width="2" fill="none"/>
-        <circle cx="16" cy="16" r="3" fill="white"/>
-        <defs>
-          <linearGradient id="logo-gradient" x1="0" y1="0" x2="32" y2="32">
-            <stop offset="0%" stop-color="#fdb71a"/>
-            <stop offset="100%" stop-color="#f39c12"/>
-          </linearGradient>
-        </defs>
-      </svg>
       <span>SILab Suite</span>
     </div>
     
