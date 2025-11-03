@@ -260,6 +260,46 @@ body{
   border-color:var(--secondary);
   box-shadow:0 12px 48px rgba(253,183,26,0.3);
 }
+.landing-admin-panel{
+  display:none;
+  margin:80px auto 40px;
+  max-width:1100px;
+  gap:24px;
+  align-items:flex-start;
+}
+.landing-admin-panel.is-visible{
+  display:grid;
+  grid-template-columns:minmax(0,0.85fr) minmax(0,1.2fr);
+}
+.landing-admin-info{
+  background:rgba(12,23,43,0.75);
+  border:1px solid rgba(253,183,26,0.2);
+  border-radius:22px;
+  padding:32px;
+  display:flex;
+  flex-direction:column;
+  gap:14px;
+  box-shadow:0 12px 40px rgba(0,0,0,0.35);
+}
+.landing-admin-info h2{
+  font-size: clamp(26px,3vw,32px);
+  margin:0;
+}
+.landing-admin-info p{
+  margin:0;
+  color:rgba(255,255,255,0.78);
+  line-height:1.6;
+}
+.landing-admin-content{
+  display:grid;
+  gap:20px;
+}
+.landing-admin-content .admin-users-card{
+  margin:0;
+}
+.landing-admin-panel .form-actions button{
+  flex:unset;
+}
 .floating-card .card-icon{font-size:40px; filter:drop-shadow(0 2px 8px rgba(0,0,0,0.3))}
 .floating-card .card-text{
   font-size:15px; font-weight:700; color:var(--text-light);
@@ -479,7 +519,9 @@ body{
   .cta-section .hero-cta button{width:auto}
   .landing-logo{font-size:16px}
   .landing-logo svg{width:28px; height:28px}
-  
+  .landing-admin-panel.is-visible{grid-template-columns:1fr}
+  .landing-admin-panel{margin:60px auto 32px}
+
   /* App navbar responsive */
   .app-navbar{padding:12px 3%; flex-wrap:wrap; gap:12px}
   .app-logo{

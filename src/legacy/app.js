@@ -81,6 +81,17 @@ export function initApp() {
   const studentPanel = $('#assignment-student-panel');
   const assistantPanel = $('#assignment-assistant-panel');
   const adminPanel = $('#admin-panel');
+  const adminUserForm = $('#admin-user-form');
+  const adminUserFormMessage = $('#admin-user-form-message');
+  const adminUserList = $('#admin-user-list');
+  const landingAdminPanel = $('#landing-admin-panel');
+  const landingAdminForm = $('#landing-admin-form');
+  const landingAdminFormMessage = $('#landing-admin-form-message');
+  const landingAdminList = $('#landing-admin-list');
+  const adminInterfaces = [
+    { panel: adminPanel, form: adminUserForm, message: adminUserFormMessage, list: adminUserList },
+    { panel: landingAdminPanel, form: landingAdminForm, message: landingAdminFormMessage, list: landingAdminList }
+  ].filter((iface) => iface.panel || iface.form || iface.list);
   const tipStudent = $('#assignment-tip-student');
   const tipAssistant = $('#assignment-tip-assistant');
   const assignmentSelect = $('#assignment-select');
@@ -100,9 +111,6 @@ export function initApp() {
   const assignmentFileClear = $('#assignment-file-clear');
   const assistantAssignmentList = $('#assistant-assignment-list');
   const assignmentCreateForm = $('#assistant-assignment-create');
-  const adminUserForm = $('#admin-user-form');
-  const adminUserFormMessage = $('#admin-user-form-message');
-  const adminUserList = $('#admin-user-list');
 
   function revealApp() {
     if (landingPage) landingPage.style.display = 'none';
@@ -406,29 +414,77 @@ export function initApp() {
   container.appendChild(list);
 }
 
-  function renderAdminUsers() {
-    if (!adminPanel) return;
-    const isAdmin = state.auth.currentUser?.role === 'admin';
-    setPanelVisibility(adminPanel, isAdmin);
-    if (!isAdmin) {
-      if (adminUserList) adminUserList.innerHTML = '';
-      if (adminUserFormMessage) adminUserFormMessage.textContent = '';
-      return;
+  function createAdminUserCard(user) {
+    const card = document.createElement('article');
+    card.className = 'admin-user-card';
+    card.dataset.id = user.id;
+
+    const roleLabel = ROLE_LABELS[user.role] || user.role;
+    const roleOptions = ROLE_OPTIONS.map(
+      (option) =>
+        `<option value="${option}" ${option === user.role ? 'selected' : ''}>${ROLE_LABELS[option] || option}</option>`
+    ).join('');
+
+    card.innerHTML = `
+      <header class="admin-user-header">
+        <div>
+          <h4>${escapeHtml(user.name || user.username)}</h4>
+          <p class="muted">@${escapeHtml(user.username)}${user.email ? ` • ${escapeHtml(user.email)}` : ''}</p>
+        </div>
+        <span class="badge badge-role-${escapeHtml(user.role)}">${escapeHtml(roleLabel)}</span>
+      </header>
+      <div class="admin-user-grid">
+        <label>Nama
+          <input type="text" class="admin-user-name" value="${escapeHtml(user.name || '')}" />
+        </label>
+        <label>Email
+          <input type="email" class="admin-user-email" value="${escapeHtml(user.email || '')}" placeholder="opsional" />
+        </label>
+        <label>Role
+          <select class="admin-user-role">
+            ${roleOptions}
+          </select>
+        </label>
+        <label>Password Baru
+          <input type="password" class="admin-user-password" placeholder="Biarkan kosong jika tidak diubah" />
+        </label>
+        <label>Nomor Mahasiswa
+          <input type="text" class="admin-user-student-id" value="${escapeHtml(user.studentId || '')}" placeholder="opsional" />
+        </label>
+        <label>Departemen
+          <input type="text" class="admin-user-department" value="${escapeHtml(user.department || '')}" placeholder="opsional" />
+        </label>
+        <label>Telepon
+          <input type="text" class="admin-user-phone" value="${escapeHtml(user.phone || '')}" placeholder="opsional" />
+        </label>
+        <label>Bio
+          <textarea class="admin-user-bio" rows="2" placeholder="opsional">${escapeHtml(user.bio || '')}</textarea>
+        </label>
+      </div>
+      <div class="admin-user-actions">
+        <button type="button" class="secondary-btn small admin-user-delete">Hapus</button>
+        <button type="button" class="small admin-user-save">Simpan</button>
+      </div>
+    `;
+
+    const deleteBtn = card.querySelector('.admin-user-delete');
+    if (deleteBtn && user.id === state.auth.currentUser?.id) {
+      deleteBtn.disabled = true;
+      deleteBtn.title = 'Tidak dapat menghapus akun sendiri';
     }
 
-    if (adminUserFormMessage) {
-      adminUserFormMessage.textContent = state.users.error || '';
-      adminUserFormMessage.className = state.users.error ? 'form-error' : 'muted';
-    }
+    return card;
+  }
 
-    if (!adminUserList) return;
-    adminUserList.innerHTML = '';
+  function renderAdminList(listElem) {
+    if (!listElem) return;
+    listElem.innerHTML = '';
 
     if (state.users.loading) {
       const loading = document.createElement('p');
       loading.className = 'muted';
       loading.textContent = 'Memuat daftar pengguna...';
-      adminUserList.appendChild(loading);
+      listElem.appendChild(loading);
       return;
     }
 
@@ -436,7 +492,7 @@ export function initApp() {
       const error = document.createElement('p');
       error.className = 'form-error';
       error.textContent = state.users.error;
-      adminUserList.appendChild(error);
+      listElem.appendChild(error);
       return;
     }
 
@@ -444,77 +500,51 @@ export function initApp() {
       const empty = document.createElement('p');
       empty.className = 'muted';
       empty.textContent = 'Belum ada pengguna lain.';
-      adminUserList.appendChild(empty);
+      listElem.appendChild(empty);
       return;
     }
 
     state.users.list.forEach((user) => {
-      const card = document.createElement('article');
-      card.className = 'admin-user-card';
-      card.dataset.id = user.id;
-
-      const roleLabel = ROLE_LABELS[user.role] || user.role;
-      const roleOptions = ROLE_OPTIONS.map(
-        (option) =>
-          `<option value="${option}" ${option === user.role ? 'selected' : ''}>${ROLE_LABELS[option] || option}</option>`
-      ).join('');
-
-      card.innerHTML = `
-        <header class="admin-user-header">
-          <div>
-            <h4>${escapeHtml(user.name || user.username)}</h4>
-            <p class="muted">@${escapeHtml(user.username)}${user.email ? ` • ${escapeHtml(user.email)}` : ''}</p>
-          </div>
-          <span class="badge badge-role-${escapeHtml(user.role)}">${escapeHtml(roleLabel)}</span>
-        </header>
-        <div class="admin-user-grid">
-          <label>Nama
-            <input type="text" class="admin-user-name" value="${escapeHtml(user.name || '')}" />
-          </label>
-          <label>Email
-            <input type="email" class="admin-user-email" value="${escapeHtml(user.email || '')}" placeholder="opsional" />
-          </label>
-          <label>Role
-            <select class="admin-user-role">
-              ${roleOptions}
-            </select>
-          </label>
-          <label>Password Baru
-            <input type="password" class="admin-user-password" placeholder="Biarkan kosong jika tidak diubah" />
-          </label>
-          <label>Nomor Mahasiswa
-            <input type="text" class="admin-user-student-id" value="${escapeHtml(user.studentId || '')}" placeholder="opsional" />
-          </label>
-          <label>Departemen
-            <input type="text" class="admin-user-department" value="${escapeHtml(user.department || '')}" placeholder="opsional" />
-          </label>
-          <label>Telepon
-            <input type="text" class="admin-user-phone" value="${escapeHtml(user.phone || '')}" placeholder="opsional" />
-          </label>
-          <label>Bio
-            <textarea class="admin-user-bio" rows="2" placeholder="opsional">${escapeHtml(user.bio || '')}</textarea>
-          </label>
-        </div>
-        <div class="admin-user-actions">
-          <button type="button" class="secondary-btn small admin-user-delete">Hapus</button>
-          <button type="button" class="small admin-user-save">Simpan</button>
-        </div>
-      `;
-
-      const deleteBtn = card.querySelector('.admin-user-delete');
-      if (deleteBtn && user.id === state.auth.currentUser?.id) {
-        deleteBtn.disabled = true;
-        deleteBtn.title = 'Tidak dapat menghapus akun sendiri';
-      }
-
-      adminUserList.appendChild(card);
+      listElem.appendChild(createAdminUserCard(user));
     });
   }
 
+  function renderAdminUsers() {
+    const isAdmin = state.auth.currentUser?.role === 'admin';
+    adminInterfaces.forEach(({ panel }) => {
+      if (panel) setPanelVisibility(panel, isAdmin);
+    });
+
+    if (!isAdmin) {
+      adminInterfaces.forEach(({ list, message }) => {
+        if (list) list.innerHTML = '';
+        if (message) {
+          message.textContent = '';
+          message.className = 'muted';
+        }
+      });
+      return;
+    }
+
+    adminInterfaces.forEach(({ message }) => {
+      if (!message) return;
+      message.textContent = state.users.error || '';
+      message.className = state.users.error ? 'form-error' : 'muted';
+    });
+
+    adminInterfaces.forEach(({ list }) => renderAdminList(list));
+  }
+
   async function refreshAdminUsers({ force = false } = {}) {
-    if (!state.auth.currentUser || state.auth.currentUser.role !== 'admin') return;
+    if (!state.auth.currentUser || state.auth.currentUser.role !== 'admin') {
+      renderAdminUsers();
+      return;
+    }
     if (state.users.loading) return;
-    if (state.users.loaded && !force) return;
+    if (state.users.loaded && !force) {
+      renderAdminUsers();
+      return;
+    }
 
     try {
       state.users.loading = true;
@@ -530,6 +560,152 @@ export function initApp() {
     } finally {
       state.users.loading = false;
       renderAdminUsers();
+    }
+  }
+
+  async function handleAdminCreate(formElem, messageElem) {
+    if (!state.auth.currentUser || state.auth.currentUser.role !== 'admin') {
+      showLogin();
+      return;
+    }
+
+    const formData = new FormData(formElem);
+    const name = String(formData.get('name') || '').trim();
+    const username = String(formData.get('username') || '').trim();
+    const role = String(formData.get('role') || '').trim();
+    const email = String(formData.get('email') || '').trim();
+    const password = String(formData.get('password') || '');
+    const studentId = String(formData.get('studentId') || '').trim();
+    const department = String(formData.get('department') || '').trim();
+    const phone = String(formData.get('phone') || '').trim();
+    const bio = String(formData.get('bio') || '').trim();
+
+    const setMessage = (text, cls = 'muted') => {
+      if (messageElem) {
+        messageElem.textContent = text;
+        messageElem.className = cls;
+      }
+    };
+
+    if (!name || !username || !role) {
+      setMessage('Nama, username, dan role wajib diisi.', 'form-error');
+      return;
+    }
+
+    if (!ROLE_OPTIONS.includes(role)) {
+      setMessage('Role tidak valid.', 'form-error');
+      return;
+    }
+
+    if (role !== 'student' && !password) {
+      setMessage('Password wajib diisi untuk akun non-mahasiswa.', 'form-error');
+      return;
+    }
+
+    try {
+      setMessage('Menyimpan pengguna baru...', 'muted');
+      await createUserApi({
+        name,
+        username,
+        role,
+        email: email || null,
+        password: password || undefined,
+        studentId: studentId || null,
+        department: department || null,
+        phone: phone || null,
+        bio: bio || null
+      });
+      formElem.reset();
+      setMessage('', 'muted');
+      toast('Pengguna baru berhasil ditambahkan.', 'success');
+      state.users.loaded = false;
+      await refreshAdminUsers({ force: true });
+    } catch (err) {
+      console.error('[Admin] Gagal membuat pengguna:', err);
+      setMessage(err.message || 'Gagal membuat pengguna.', 'form-error');
+      toast(err.message || 'Gagal membuat pengguna.', 'danger');
+    }
+  }
+
+  async function handleAdminListClick(e) {
+    const currentUser = state.auth.currentUser;
+    if (!currentUser || currentUser.role !== 'admin') {
+      showLogin();
+      return;
+    }
+
+    const saveBtn = e.target.closest('.admin-user-save');
+    const deleteBtn = e.target.closest('.admin-user-delete');
+    if (!saveBtn && !deleteBtn) return;
+
+    const card = (saveBtn || deleteBtn)?.closest('.admin-user-card');
+    if (!card) return;
+    const userId = card.dataset.id;
+    if (!userId) return;
+
+    if (saveBtn) {
+      const nameInput = card.querySelector('.admin-user-name');
+      const emailInput = card.querySelector('.admin-user-email');
+      const roleSelect = card.querySelector('.admin-user-role');
+      const passwordInput = card.querySelector('.admin-user-password');
+      const studentIdInput = card.querySelector('.admin-user-student-id');
+      const departmentInput = card.querySelector('.admin-user-department');
+      const phoneInput = card.querySelector('.admin-user-phone');
+      const bioInput = card.querySelector('.admin-user-bio');
+
+      const nameValue = nameInput?.value.trim() || '';
+      const emailValue = emailInput?.value.trim() || '';
+      const roleValue = roleSelect?.value.trim() || '';
+      const passwordValue = passwordInput?.value || '';
+      const studentIdValue = studentIdInput?.value.trim() || '';
+      const departmentValue = departmentInput?.value.trim() || '';
+      const phoneValue = phoneInput?.value.trim() || '';
+      const bioValue = bioInput?.value.trim() || '';
+
+      if (!nameValue) {
+        toast('Nama tidak boleh kosong.', 'danger');
+        return;
+      }
+
+      if (!ROLE_OPTIONS.includes(roleValue)) {
+        toast('Role tidak valid.', 'danger');
+        return;
+      }
+
+      try {
+        await updateUserApi(userId, {
+          name: nameValue,
+          email: emailValue || null,
+          role: roleValue,
+          password: passwordValue || undefined,
+          studentId: studentIdValue || null,
+          department: departmentValue || null,
+          phone: phoneValue || null,
+          bio: bioValue || null
+        });
+        toast('Perubahan pengguna disimpan.', 'success');
+        state.users.loaded = false;
+        await refreshAdminUsers({ force: true });
+      } catch (err) {
+        console.error('[Admin] Gagal memperbarui pengguna:', err);
+        toast(err.message || 'Gagal memperbarui pengguna.', 'danger');
+      }
+      return;
+    }
+
+    if (deleteBtn) {
+      if (deleteBtn.disabled) return;
+      const targetName = card.querySelector('.admin-user-name')?.value || '';
+      if (!window.confirm(`Hapus akun "${targetName || 'pengguna'}"?`)) return;
+      try {
+        await deleteUserApi(userId);
+        toast('Pengguna berhasil dihapus.', 'info');
+        state.users.loaded = false;
+        await refreshAdminUsers({ force: true });
+      } catch (err) {
+        console.error('[Admin] Gagal menghapus pengguna:', err);
+        toast(err.message || 'Gagal menghapus pengguna.', 'danger');
+      }
     }
   }
 
@@ -1242,161 +1418,17 @@ export function initApp() {
     updateAttachmentStatus();
   });
 
-  adminUserForm?.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    if (!state.auth.currentUser || state.auth.currentUser.role !== 'admin') {
-      showLogin();
-      return;
-    }
-
-    const formData = new FormData(adminUserForm);
-    const name = String(formData.get('name') || '').trim();
-    const username = String(formData.get('username') || '').trim();
-    const email = String(formData.get('email') || '').trim();
-    const role = String(formData.get('role') || '').trim();
-    const password = String(formData.get('password') || '');
-    const studentId = String(formData.get('studentId') || '').trim();
-    const department = String(formData.get('department') || '').trim();
-    const phone = String(formData.get('phone') || '').trim();
-    const bio = String(formData.get('bio') || '').trim();
-
-    if (!name || !username || !role) {
-      if (adminUserFormMessage) {
-        adminUserFormMessage.textContent = 'Nama, username, dan role wajib diisi.';
-        adminUserFormMessage.className = 'form-error';
-      }
-      return;
-    }
-
-    if (!ROLE_OPTIONS.includes(role)) {
-      if (adminUserFormMessage) {
-        adminUserFormMessage.textContent = 'Role tidak valid.';
-        adminUserFormMessage.className = 'form-error';
-      }
-      return;
-    }
-
-    if (role !== 'student' && !password) {
-      if (adminUserFormMessage) {
-        adminUserFormMessage.textContent = 'Password wajib diisi untuk akun non-mahasiswa.';
-        adminUserFormMessage.className = 'form-error';
-      }
-      return;
-    }
-
-    try {
-      if (adminUserFormMessage) {
-        adminUserFormMessage.textContent = 'Menyimpan pengguna baru...';
-        adminUserFormMessage.className = 'muted';
-      }
-      await createUserApi({
-        name,
-        username,
-        role,
-        email: email || null,
-        password: password || undefined,
-        studentId: studentId || null,
-        department: department || null,
-        phone: phone || null,
-        bio: bio || null
-      });
-      adminUserForm.reset();
-      if (adminUserFormMessage) {
-        adminUserFormMessage.textContent = '';
-        adminUserFormMessage.className = 'muted';
-      }
-      toast('Pengguna baru berhasil ditambahkan.', 'success');
-      state.users.loaded = false;
-      await refreshAdminUsers({ force: true });
-    } catch (err) {
-      console.error('[Admin] Gagal membuat pengguna:', err);
-      if (adminUserFormMessage) {
-        adminUserFormMessage.textContent = err.message || 'Gagal membuat pengguna.';
-        adminUserFormMessage.className = 'form-error';
-      }
-      toast(err.message || 'Gagal membuat pengguna.', 'danger');
-    }
+  adminInterfaces.forEach(({ form, message }) => {
+    if (!form) return;
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      handleAdminCreate(form, message);
+    });
   });
 
-  adminUserList?.addEventListener('click', async (e) => {
-    const user = state.auth.currentUser;
-    if (!user || user.role !== 'admin') {
-      showLogin();
-      return;
-    }
-
-    const saveBtn = e.target.closest('.admin-user-save');
-    const deleteBtn = e.target.closest('.admin-user-delete');
-    const card = (saveBtn || deleteBtn)?.closest('.admin-user-card');
-    if (!card) return;
-
-    const userId = card.dataset.id;
-    if (!userId) return;
-
-    if (saveBtn) {
-      const nameInput = card.querySelector('.admin-user-name');
-      const emailInput = card.querySelector('.admin-user-email');
-      const roleSelect = card.querySelector('.admin-user-role');
-      const passwordInput = card.querySelector('.admin-user-password');
-      const studentIdInput = card.querySelector('.admin-user-student-id');
-      const departmentInput = card.querySelector('.admin-user-department');
-      const phoneInput = card.querySelector('.admin-user-phone');
-      const bioInput = card.querySelector('.admin-user-bio');
-
-      const nameValue = nameInput?.value.trim() || '';
-      const emailValue = emailInput?.value.trim() || '';
-      const roleValue = roleSelect?.value.trim() || '';
-      const passwordValue = passwordInput?.value || '';
-      const studentIdValue = studentIdInput?.value.trim() || '';
-      const departmentValue = departmentInput?.value.trim() || '';
-      const phoneValue = phoneInput?.value.trim() || '';
-      const bioValue = bioInput?.value.trim() || '';
-
-      if (!nameValue) {
-        toast('Nama tidak boleh kosong.', 'danger');
-        return;
-      }
-
-      if (!ROLE_OPTIONS.includes(roleValue)) {
-        toast('Role tidak valid.', 'danger');
-        return;
-      }
-
-      try {
-        await updateUserApi(userId, {
-          name: nameValue,
-          email: emailValue || null,
-          role: roleValue,
-          password: passwordValue || undefined,
-          studentId: studentIdValue || null,
-          department: departmentValue || null,
-          phone: phoneValue || null,
-          bio: bioValue || null
-        });
-        toast('Perubahan pengguna disimpan.', 'success');
-        state.users.loaded = false;
-        await refreshAdminUsers({ force: true });
-      } catch (err) {
-        console.error('[Admin] Gagal memperbarui pengguna:', err);
-        toast(err.message || 'Gagal memperbarui pengguna.', 'danger');
-      }
-      return;
-    }
-
-    if (deleteBtn) {
-      if (deleteBtn.disabled) return;
-      const targetName = card.querySelector('.admin-user-name')?.value || '';
-      if (!window.confirm(`Hapus akun "${targetName || 'pengguna'}"?`)) return;
-      try {
-        await deleteUserApi(userId);
-        toast('Pengguna berhasil dihapus.', 'info');
-        state.users.loaded = false;
-        await refreshAdminUsers({ force: true });
-      } catch (err) {
-        console.error('[Admin] Gagal menghapus pengguna:', err);
-        toast(err.message || 'Gagal menghapus pengguna.', 'danger');
-      }
-    }
+  adminInterfaces.forEach(({ list }) => {
+    if (!list) return;
+    list.addEventListener('click', handleAdminListClick);
   });
 
   assignmentCreateForm?.addEventListener('submit', (e) => {
@@ -1784,6 +1816,7 @@ export function initApp() {
 
   ensureAssignmentOptions();
   clearGradeForm();
+  renderAdminUsers();
   
   // Restore session from localStorage (for Google OAuth)
   const savedToken = localStorage.getItem('isl-token');

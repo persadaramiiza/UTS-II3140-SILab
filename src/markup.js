@@ -225,6 +225,61 @@ export const appMarkup = `
       </div>
     </section>
 
+    <section id="landing-admin-panel" class="landing-admin-panel">
+      <div class="landing-admin-info">
+        <h2>Panel Admin</h2>
+        <p>Kelola akun pengguna langsung dari halaman utama. Panel ini hanya terlihat oleh akun admin.</p>
+        <p class="form-hint">Gunakan panel ini untuk menambah, memperbarui, atau menghapus akun web.</p>
+      </div>
+      <div class="landing-admin-content">
+        <form id="landing-admin-form" class="card admin-form">
+          <h3>Tambah Pengguna</h3>
+          <div class="admin-form-grid">
+            <label>Nama Lengkap
+              <input name="name" placeholder="Nama lengkap" required />
+            </label>
+            <label>Username
+              <input name="username" placeholder="Username unik" required />
+            </label>
+            <label>Role
+              <select name="role" required>
+                <option value="student">Mahasiswa</option>
+                <option value="assistant">Asisten</option>
+                <option value="admin">Admin</option>
+              </select>
+            </label>
+            <label>Password
+              <input type="password" name="password" placeholder="Wajib untuk non-mahasiswa" />
+            </label>
+            <label>Email
+              <input type="email" name="email" placeholder="Email (opsional)" />
+            </label>
+            <label>Nomor Mahasiswa
+              <input type="text" name="studentId" placeholder="Opsional" />
+            </label>
+            <label>Departemen
+              <input type="text" name="department" placeholder="Opsional" />
+            </label>
+            <label>Telepon
+              <input type="text" name="phone" placeholder="Opsional" />
+            </label>
+            <label>Bio
+              <textarea name="bio" rows="2" placeholder="Opsional"></textarea>
+            </label>
+          </div>
+          <p id="landing-admin-form-message" class="muted"></p>
+          <div class="form-actions">
+            <button type="submit">Tambah Pengguna</button>
+          </div>
+        </form>
+
+        <section class="card admin-users-card">
+          <h3>Daftar Pengguna</h3>
+          <div id="landing-admin-list" class="admin-user-list"></div>
+        </section>
+      </div>
+    </section>
+
     <section id="features" class="features">
       <div class="section-header">
         <h2>Modul Lengkap untuk Penelitian SI</h2>
