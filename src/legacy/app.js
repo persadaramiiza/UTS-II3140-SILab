@@ -539,6 +539,12 @@ export function initApp() {
     window.closeAdminPanel = closeAdminModal;
   }
 
+  if (adminModal && adminModal.parentElement !== document.body) {
+    document.body.appendChild(adminModal);
+    adminModal.setAttribute('role', 'dialog');
+    adminModal.setAttribute('aria-modal', 'true');
+  }
+
   function renderAdminUsers() {
     const isAdmin = state.auth.currentUser?.role === 'admin';
 
