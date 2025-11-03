@@ -1,12 +1,38 @@
 import { Router } from 'express';
 import { v4 as uuid } from 'uuid';
 import { requireAuth } from '../middleware/auth.js';
-import { listAssignments, listSubmissions, upsertSubmission } from '../data/store.js';
+import {
+  listAssignments,
+  listSubmissions,
+  upsertSubmission,
+  findSubmissionById,
+  listSubmissionFiles,
+  addSubmissionFileRecord,
+  removeSubmissionFileRecord,
+  getSubmissionFileRecord
+} from '../data/store.js';
+import {
+  createUploadUrl,
+  createDownloadUrl,
+  deleteStorageObject,
+  isStorageConfigured
+} from '../services/submissionFilesService.js';
 
 export const assignmentsRouter = Router();
 
 function findAssignment(assignments, assignmentId) {
   return assignments.find((item) => item.id === assignmentId) || null;
+}
+
+function toPublicFile(file) {
+  return {
+    id: file.id,
+    originalName: file.originalName,
+    contentType: file.contentType,
+    sizeBytes: file.sizeBytes,
+    uploadedBy: file.uploadedBy,
+    createdAt: file.createdAt
+  };
 }
 
 function toPublicSubmission(submission) {
@@ -27,8 +53,17 @@ function toPublicSubmission(submission) {
           graderId: submission.grade.graderId,
           graderName: submission.grade.graderName
         }
-      : null
+      : null,
+    files: submission.files ? submission.files.map(toPublicFile) : []
   };
+}
+
+function canViewSubmission(submission, user) {
+  return user.role === 'assistant' || submission.studentId === user.id;
+}
+
+function canManageSubmission(submission, user) {
+  return canViewSubmission(submission, user);
 }
 
 assignmentsRouter.get('/assignments', requireAuth(), async (req, res, next) => {
@@ -109,7 +144,8 @@ assignmentsRouter.post('/assignments/:assignmentId/submissions', requireAuth('st
       notes: notes ? String(notes).trim() : '',
       submittedAt: now,
       updatedAt: now,
-      grade: null
+      grade: null,
+      files: existing?.files || []
     };
 
     await upsertSubmission(draft);
@@ -125,10 +161,13 @@ assignmentsRouter.post('/assignments/:assignmentId/submissions', requireAuth('st
 
 assignmentsRouter.post('/submissions/:submissionId/grade', requireAuth('assistant'), async (req, res, next) => {
   try {
-    const submissions = await listSubmissions();
-    const submission = submissions.find((item) => item.id === req.params.submissionId);
+    const submission = await findSubmissionById(req.params.submissionId);
     if (!submission) {
       return res.status(404).json({ message: 'Pengumpulan tidak ditemukan.' });
+    }
+
+    if (!canManageSubmission(submission, req.auth.rawUser)) {
+      return res.status(403).json({ message: 'Akses ditolak.' });
     }
 
     const scoreValue = Number(req.body?.score);
@@ -145,8 +184,8 @@ assignmentsRouter.post('/submissions/:submissionId/grade', requireAuth('assistan
     };
     submission.updatedAt = new Date().toISOString();
 
-    await upsertSubmission(submission);
-    res.json({ message: 'Penilaian tersimpan.', submission: toPublicSubmission(submission) });
+    const updated = await upsertSubmission(submission);
+    res.json({ message: 'Penilaian tersimpan.', submission: toPublicSubmission(updated) });
   } catch (err) {
     next(err);
   }
@@ -154,8 +193,7 @@ assignmentsRouter.post('/submissions/:submissionId/grade', requireAuth('assistan
 
 assignmentsRouter.delete('/submissions/:submissionId/grade', requireAuth('assistant'), async (req, res, next) => {
   try {
-    const submissions = await listSubmissions();
-    const submission = submissions.find((item) => item.id === req.params.submissionId);
+    const submission = await findSubmissionById(req.params.submissionId);
     if (!submission) {
       return res.status(404).json({ message: 'Pengumpulan tidak ditemukan.' });
     }
@@ -167,8 +205,157 @@ assignmentsRouter.delete('/submissions/:submissionId/grade', requireAuth('assist
     submission.grade = null;
     submission.updatedAt = new Date().toISOString();
 
-    await upsertSubmission(submission);
-    res.json({ message: 'Penilaian dihapus.', submission: toPublicSubmission(submission) });
+    const updated = await upsertSubmission(submission);
+    res.json({ message: 'Penilaian dihapus.', submission: toPublicSubmission(updated) });
+  } catch (err) {
+    next(err);
+  }
+});
+
+assignmentsRouter.get('/submissions/:submissionId/files', requireAuth(), async (req, res, next) => {
+  try {
+    const submission = await findSubmissionById(req.params.submissionId);
+    if (!submission) {
+      return res.status(404).json({ message: 'Pengumpulan tidak ditemukan.' });
+    }
+
+    if (!canViewSubmission(submission, req.auth.rawUser)) {
+      return res.status(403).json({ message: 'Akses ditolak.' });
+    }
+
+    const files = await listSubmissionFiles(submission.id);
+    res.json({ files: files.map(toPublicFile) });
+  } catch (err) {
+    next(err);
+  }
+});
+
+assignmentsRouter.post('/submissions/:submissionId/files/upload-url', requireAuth(), async (req, res, next) => {
+  try {
+    if (!isStorageConfigured()) {
+      return res.status(503).json({ message: 'Penyimpanan file belum dikonfigurasi.' });
+    }
+
+    const submission = await findSubmissionById(req.params.submissionId);
+    if (!submission) {
+      return res.status(404).json({ message: 'Pengumpulan tidak ditemukan.' });
+    }
+
+    if (!canManageSubmission(submission, req.auth.rawUser)) {
+      return res.status(403).json({ message: 'Akses ditolak.' });
+    }
+
+    const { fileName, fileSize, contentType } = req.body || {};
+    if (!fileName || typeof fileName !== 'string') {
+      return res.status(400).json({ message: 'Nama file wajib diisi.' });
+    }
+    if (fileSize && Number(fileSize) > 20 * 1024 * 1024) {
+      return res.status(400).json({ message: 'Ukuran file maksimal 20MB.' });
+    }
+
+    const upload = await createUploadUrl(submission.id, {
+      originalName: fileName,
+      contentType: contentType || 'application/octet-stream',
+      sizeBytes: fileSize ? Number(fileSize) : null
+    });
+
+    res.json({
+      uploadUrl: upload.signedUrl,
+      token: upload.token,
+      storagePath: upload.storagePath,
+      fileId: upload.fileId
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+assignmentsRouter.post('/submissions/:submissionId/files', requireAuth(), async (req, res, next) => {
+  try {
+    if (!isStorageConfigured()) {
+      return res.status(503).json({ message: 'Penyimpanan file belum dikonfigurasi.' });
+    }
+
+    const submission = await findSubmissionById(req.params.submissionId);
+    if (!submission) {
+      return res.status(404).json({ message: 'Pengumpulan tidak ditemukan.' });
+    }
+
+    if (!canManageSubmission(submission, req.auth.rawUser)) {
+      return res.status(403).json({ message: 'Akses ditolak.' });
+    }
+
+    const { fileId, storagePath, fileName, contentType, fileSize } = req.body || {};
+    if (!fileId || !storagePath || !fileName) {
+      return res.status(400).json({ message: 'Data file tidak lengkap.' });
+    }
+
+    const record = await addSubmissionFileRecord(submission.id, {
+      id: fileId,
+      storagePath,
+      originalName: fileName,
+      contentType: contentType || 'application/octet-stream',
+      sizeBytes: fileSize ? Number(fileSize) : null,
+      uploadedBy: req.auth.rawUser.id
+    });
+
+    res.status(201).json({ file: toPublicFile(record) });
+  } catch (err) {
+    next(err);
+  }
+});
+
+assignmentsRouter.get('/submissions/:submissionId/files/:fileId/download', requireAuth(), async (req, res, next) => {
+  try {
+    if (!isStorageConfigured()) {
+      return res.status(503).json({ message: 'Penyimpanan file belum dikonfigurasi.' });
+    }
+
+    const submission = await findSubmissionById(req.params.submissionId);
+    if (!submission) {
+      return res.status(404).json({ message: 'Pengumpulan tidak ditemukan.' });
+    }
+
+    if (!canViewSubmission(submission, req.auth.rawUser)) {
+      return res.status(403).json({ message: 'Akses ditolak.' });
+    }
+
+    const file = await getSubmissionFileRecord(submission.id, req.params.fileId);
+    if (!file) {
+      return res.status(404).json({ message: 'File tidak ditemukan.' });
+    }
+
+    const url = await createDownloadUrl(file.storagePath);
+    res.json({ url });
+  } catch (err) {
+    next(err);
+  }
+});
+
+assignmentsRouter.delete('/submissions/:submissionId/files/:fileId', requireAuth(), async (req, res, next) => {
+  try {
+    if (!isStorageConfigured()) {
+      return res.status(503).json({ message: 'Penyimpanan file belum dikonfigurasi.' });
+    }
+
+    const submission = await findSubmissionById(req.params.submissionId);
+    if (!submission) {
+      return res.status(404).json({ message: 'Pengumpulan tidak ditemukan.' });
+    }
+
+    if (!canManageSubmission(submission, req.auth.rawUser)) {
+      return res.status(403).json({ message: 'Akses ditolak.' });
+    }
+
+    const file = await getSubmissionFileRecord(submission.id, req.params.fileId);
+    if (!file) {
+      return res.status(404).json({ message: 'File tidak ditemukan.' });
+    }
+
+    await deleteStorageObject(file.storagePath);
+    await removeSubmissionFileRecord(submission.id, req.params.fileId);
+
+    res.json({ message: 'File dihapus.' });
   } catch (err) {
     next(err);
   }

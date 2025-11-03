@@ -12,5 +12,8 @@ export const config = {
   dataFile: process.env.DATA_FILE || path.join(dataDir, 'state.json'),
   corsOrigin: process.env.CORS_ORIGIN || '*',
   googleClientId: process.env.GOOGLE_CLIENT_ID || '',
-  googleClientSecret: process.env.GOOGLE_CLIENT_SECRET || ''
+  googleClientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
+  supabaseUrl: process.env.SUPABASE_URL || '',
+  supabaseServiceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY || '',
+  supabaseStorageBucket: process.env.SUPABASE_STORAGE_BUCKET || 'submission-files'
 };
