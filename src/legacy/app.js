@@ -534,6 +534,11 @@ export function initApp() {
     document.body.classList.remove('modal-open');
   }
 
+  if (typeof window !== 'undefined') {
+    window.openAdminPanel = () => openAdminModal(true);
+    window.closeAdminPanel = closeAdminModal;
+  }
+
   function renderAdminUsers() {
     const isAdmin = state.auth.currentUser?.role === 'admin';
 
