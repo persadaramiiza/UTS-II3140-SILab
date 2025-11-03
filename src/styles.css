@@ -227,6 +227,8 @@ body{
 }
 .secondary-btn:active{transform:translateY(0)}
 .secondary-btn.large{padding:16px 40px; font-size:17px}
+.admin-trigger{display:none;}
+.admin-trigger.is-visible{display:inline-flex;}
 
 .hero-stats{
   display:flex; gap:56px; padding-top:36px;
@@ -2799,5 +2801,6 @@ label input, label textarea, label select{margin-top:6px; width:100%}
   .assistant-layout{grid-template-columns:1fr}
   .user-controls{flex-wrap:wrap; justify-content:flex-end}
 }
+
 
 

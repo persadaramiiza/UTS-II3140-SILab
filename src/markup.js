@@ -189,7 +189,7 @@ export const appMarkup = `
        <div class="hero-cta">
          <button id="getStarted" class="cta-btn large" type="button"><span>Mulai Sekarang</span></button>
          <button id="learnMore" class="secondary-btn large" type="button">Jelajahi Modul</button>
-          <button id="openAdminPanel" data-action="open-admin" class="secondary-btn large admin-trigger" type="button" style="display:none;">Panel Admin</button>
+          <button id="openAdminPanel" data-action="open-admin" class="secondary-btn large admin-trigger" type="button">Panel Admin</button>
         </div>
         <div class="hero-stats">
           <div class="stat">

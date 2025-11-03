@@ -539,7 +539,8 @@ export function initApp() {
 
     adminOpenButtons.forEach((btn) => {
       if (!btn) return;
-      btn.style.display = isAdmin ? 'inline-flex' : 'none';
+      btn.classList.toggle('is-visible', isAdmin);
+      btn.setAttribute('aria-hidden', isAdmin ? 'false' : 'true');
     });
 
     adminInterfaces.forEach(({ panel }) => {
