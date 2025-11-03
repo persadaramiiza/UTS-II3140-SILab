@@ -1,5 +1,19 @@
 // Profile Management Module
-const API_BASE = 'http://localhost:4000/api';
+const DEFAULT_DEV_API = 'http://localhost:4000/api';
+const resolveApiBase = () => {
+  const env = typeof import.meta !== 'undefined' ? import.meta.env : undefined;
+  const envApi = env?.VITE_API_URL;
+  if (envApi) return envApi;
+  if (env?.DEV) return DEFAULT_DEV_API;
+  if (typeof window !== 'undefined' && window.location) {
+    return `${window.location.origin}/api`;
+  }
+  return DEFAULT_DEV_API;
+};
+
+const API_BASE = resolveApiBase();
+
+console.log('[Profile] API base set to:', API_BASE);
 
 /**
  * Get current user profile from API
