@@ -15,7 +15,8 @@
     "docker:run": "docker run -p 4000:4000 silab",
     "docker:up": "docker-compose up -d",
     "docker:down": "docker-compose down",
-    "docker:logs": "docker-compose logs -f"
+    "docker:logs": "docker-compose logs -f",
+    "backup:supabase": "node scripts/backup-supabase.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.78.0",
@@ -32,6 +33,7 @@
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.2.1",
+    "supabase": "^1.226.4",
     "vite": "^5.2.0"
   }
 }

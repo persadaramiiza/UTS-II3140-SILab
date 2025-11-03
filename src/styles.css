@@ -2513,6 +2513,21 @@ label input, label textarea, label select{margin-top:6px; width:100%}
 .attachment-info .file-size{
   font-size:12px; color:var(--muted);
 }
+.attachment-info.attachment-list{
+  flex-direction:column;
+  align-items:flex-start;
+  gap:12px;
+}
+.attachment-info.attachment-list .attachment-item{
+  display:flex;
+  gap:10px;
+  align-items:center;
+  flex-wrap:wrap;
+}
+.attachment-info.attachment-list .button-link,
+.attachment-info.attachment-list .secondary-btn{
+  margin-left:auto;
+}
 .assistant-layout{
   display:grid;
   grid-template-columns:minmax(0,2fr) minmax(0,1.3fr);

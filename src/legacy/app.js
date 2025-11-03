@@ -1,3 +1,18 @@
+import { loginWithCredentials } from '../services/authApi.js';
+import {
+  fetchAssignments,
+  fetchMySubmissions,
+  fetchAssignmentSubmissions,
+  submitAssignment,
+  requestSubmissionUpload,
+  confirmSubmissionFile,
+  listSubmissionFilesApi,
+  getSubmissionFileDownloadUrl,
+  deleteSubmissionFile,
+  gradeSubmission,
+  clearSubmissionGrade
+} from '../services/assignmentsApi.js';
+
 let initialized = false;
 let cachedState = null;
 
@@ -114,6 +129,9 @@ export function initApp() {
       submissions: [],
       selectedSubmissionId: null,
       pendingAttachment: null,
+      backendEnabled: false,
+      backendLoading: false,
+      backendError: null,
       removeAttachment: false,
       attachmentLoading: false,
       editingId: null,
@@ -127,7 +145,7 @@ export function initApp() {
     quiz: { answers: {}, submitted: false, score: 0 }
   };
 
-  const MAX_ATTACHMENT_SIZE = 10 * 1024 * 1024; // 10MB
+  const MAX_ATTACHMENT_SIZE = 20 * 1024 * 1024; // 20MB (matches backend limit)
 
   function sanitizeUser(raw) {
     if (!raw) return null;
@@ -222,6 +240,56 @@ export function initApp() {
 
   state.assignments.catalog = state.assignments.catalog.map((item) => normalizeAssignment(item)).filter(Boolean);
 
+  async function synchronizeAssignmentsFromBackend() {
+    const user = state.auth.currentUser;
+    const token = localStorage.getItem('isl-token');
+    if (!user || !token) {
+      state.assignments.backendEnabled = false;
+      return;
+    }
+
+    try {
+      state.assignments.backendLoading = true;
+      const assignments = await fetchAssignments();
+      if (Array.isArray(assignments) && assignments.length) {
+        state.assignments.catalog = assignments.map((item) => normalizeAssignment(item)).filter(Boolean);
+      }
+
+      let submissions = [];
+      if (user.role === 'student') {
+        submissions = await fetchMySubmissions();
+      } else if (user.role === 'assistant') {
+        const perAssignment = await Promise.all(
+          state.assignments.catalog.map(async (assignment) => {
+            try {
+              const result = await fetchAssignmentSubmissions(assignment.id);
+              return result.submissions || [];
+            } catch (err) {
+              console.error('[Assignments] Gagal memuat submissions:', assignment.id, err);
+              return [];
+            }
+          })
+        );
+        submissions = perAssignment.flat();
+      }
+
+      state.assignments.submissions = Array.isArray(submissions) ? submissions : [];
+      state.assignments.backendEnabled = true;
+      state.assignments.backendError = null;
+    } catch (err) {
+      console.error('[Assignments] Sinkronisasi backend gagal:', err);
+      state.assignments.backendEnabled = false;
+      state.assignments.backendError = err.message || 'Gagal memuat data dari server.';
+      toast(state.assignments.backendError, 'danger');
+    } finally {
+      state.assignments.backendLoading = false;
+      ensureAssignmentOptions();
+      renderStudentAssignments();
+      renderAssistantAssignments();
+      updateAttachmentStatus();
+    }
+  }
+
   function getActiveStudentSubmission() {
     const user = state.auth.currentUser;
     if (!user || user.role !== 'student' || !assignmentSelect) return null;
@@ -241,6 +309,100 @@ export function initApp() {
     assignmentFileInfo.classList.toggle('notice', mode === 'notice');
   }
 
+  function toDisplayAttachment(attachment) {
+    if (!attachment) return null;
+    return {
+      id: attachment.id || null,
+      name: attachment.name || attachment.originalName || 'dokumen',
+      size: Number.isFinite(attachment.size) ? attachment.size : attachment.sizeBytes || 0
+    };
+  }
+
+  async function downloadSubmissionFile(submissionId, file) {
+    try {
+      const url = await getSubmissionFileDownloadUrl(submissionId, file.id);
+      if (!url) throw new Error('URL unduhan tidak tersedia.');
+      window.open(url, '_blank', 'noopener');
+    } catch (err) {
+      console.error('[Assignments] Download file failed:', err);
+      toast(err.message || 'Gagal mengunduh file.');
+    }
+  }
+
+  function appendSubmissionFiles(container, submission) {
+    if (!container || !submission?.files?.length) return;
+
+    const list = document.createElement('div');
+    list.className = 'attachment-info attachment-list';
+
+    submission.files.forEach((file) => {
+      const item = document.createElement('div');
+      item.className = 'attachment-item';
+
+      const label = document.createElement('span');
+      label.className = 'file-label';
+      label.textContent = 'Lampiran:';
+      item.appendChild(label);
+
+      const name = document.createElement('span');
+      name.className = 'file-name';
+      name.textContent = file.originalName || 'dokumen';
+      item.appendChild(name);
+
+      if (Number.isFinite(file.sizeBytes)) {
+        const size = document.createElement('span');
+        size.className = 'file-size';
+        size.textContent = `(${formatBytes(file.sizeBytes)})`;
+        item.appendChild(size);
+      }
+
+      const download = document.createElement('button');
+      download.type = 'button';
+      download.className = 'button-link';
+      download.textContent = 'Unduh';
+      download.addEventListener('click', (evt) => {
+        evt.preventDefault();
+        download.disabled = true;
+        download.textContent = 'Mengunduh...';
+        downloadSubmissionFile(submission.id, file)
+          .catch(() => {})
+          .finally(() => {
+            download.disabled = false;
+            download.textContent = 'Unduh';
+          });
+      });
+      item.appendChild(download);
+
+      list.appendChild(item);
+    });
+
+    container.appendChild(list);
+  }
+
+  function resetAssignmentState({ clearData = false } = {}) {
+    state.assignments.selectedSubmissionId = null;
+    state.assignments.pendingAttachment = null;
+    state.assignments.removeAttachment = false;
+    state.assignments.attachmentLoading = false;
+    state.assignments.editingId = null;
+    state.assignments.editingDraft = null;
+    state.assignments.backendError = null;
+    if (clearData) {
+      state.assignments.submissions = [];
+    }
+    if (assignmentFileInput) assignmentFileInput.value = '';
+  }
+
+  function upsertSubmissionInState(submission) {
+    if (!submission) return;
+    const index = state.assignments.submissions.findIndex((item) => item.id === submission.id);
+    if (index >= 0) {
+      state.assignments.submissions[index] = { ...submission };
+    } else {
+      state.assignments.submissions.push({ ...submission });
+    }
+  }
+
   function setAttachmentInfo(label, attachment, mode = 'default') {
     if (!assignmentFileInfo) return;
     assignmentFileInfo.innerHTML = '';
@@ -251,15 +413,16 @@ export function initApp() {
     labelEl.textContent = label;
     assignmentFileInfo.appendChild(labelEl);
 
-    if (attachment) {
+    const displayAttachment = toDisplayAttachment(attachment);
+    if (displayAttachment) {
       const nameEl = document.createElement('span');
       nameEl.className = 'file-name';
-      nameEl.textContent = attachment.name;
+      nameEl.textContent = displayAttachment.name;
       assignmentFileInfo.appendChild(nameEl);
 
       const sizeEl = document.createElement('span');
       sizeEl.className = 'file-size';
-      sizeEl.textContent = `(${formatBytes(attachment.size)})`;
+      sizeEl.textContent = `(${formatBytes(displayAttachment.size)})`;
       assignmentFileInfo.appendChild(sizeEl);
     }
   }
@@ -277,7 +440,7 @@ export function initApp() {
     const pending = state.assignments.pendingAttachment;
     const removing = state.assignments.removeAttachment;
     const existingSubmission = getActiveStudentSubmission();
-    const existingAttachment = existingSubmission?.attachment || null;
+    const existingAttachment = existingSubmission?.files?.[0] || null;
 
     if (pending) {
       setAttachmentInfo('Akan diunggah:', pending);
@@ -515,28 +678,7 @@ export function initApp() {
         status.textContent = statusText;
         card.appendChild(status);
 
-        if (submission?.attachment) {
-          const attachmentWrap = document.createElement('div');
-          attachmentWrap.className = 'attachment-info';
-          const label = document.createElement('span');
-          label.textContent = 'Dokumen:';
-          attachmentWrap.appendChild(label);
-          const name = document.createElement('span');
-          name.className = 'file-name';
-          name.textContent = submission.attachment.name;
-          attachmentWrap.appendChild(name);
-          const size = document.createElement('span');
-          size.className = 'file-size';
-          size.textContent = `(${formatBytes(submission.attachment.size)})`;
-          attachmentWrap.appendChild(size);
-          const download = document.createElement('a');
-          download.href = submission.attachment.dataUrl;
-          download.download = submission.attachment.name;
-          download.textContent = 'Unduh Dokumen';
-          download.className = 'secondary-btn small';
-          attachmentWrap.appendChild(download);
-          card.appendChild(attachmentWrap);
-        }
+        appendSubmissionFiles(card, submission);
 
         assignmentCatalogEl.appendChild(card);
       });
@@ -587,28 +729,7 @@ export function initApp() {
           card.appendChild(notes);
         }
 
-        if (submission.attachment) {
-          const attachmentWrap = document.createElement('div');
-          attachmentWrap.className = 'attachment-info';
-          const label = document.createElement('span');
-          label.textContent = 'Dokumen:';
-          attachmentWrap.appendChild(label);
-          const name = document.createElement('span');
-          name.className = 'file-name';
-          name.textContent = submission.attachment.name;
-          attachmentWrap.appendChild(name);
-          const size = document.createElement('span');
-          size.className = 'file-size';
-          size.textContent = `(${formatBytes(submission.attachment.size)})`;
-          attachmentWrap.appendChild(size);
-          const download = document.createElement('a');
-          download.href = submission.attachment.dataUrl;
-          download.download = submission.attachment.name;
-          download.textContent = 'Unduh Dokumen';
-          download.className = 'secondary-btn small';
-          attachmentWrap.appendChild(download);
-          card.appendChild(attachmentWrap);
-        }
+        appendSubmissionFiles(card, submission);
 
         const status = document.createElement('p');
         status.className = 'submission-meta';
@@ -684,28 +805,7 @@ export function initApp() {
         card.appendChild(notes);
       }
 
-      if (submission.attachment) {
-        const attachmentWrap = document.createElement('div');
-        attachmentWrap.className = 'attachment-info';
-        const label = document.createElement('span');
-        label.textContent = 'Dokumen:';
-        attachmentWrap.appendChild(label);
-        const name = document.createElement('span');
-        name.className = 'file-name';
-        name.textContent = submission.attachment.name;
-        attachmentWrap.appendChild(name);
-        const size = document.createElement('span');
-        size.className = 'file-size';
-        size.textContent = `(${formatBytes(submission.attachment.size)})`;
-        attachmentWrap.appendChild(size);
-        const download = document.createElement('a');
-        download.href = submission.attachment.dataUrl;
-        download.download = submission.attachment.name;
-        download.textContent = 'Unduh Dokumen';
-        download.className = 'secondary-btn small';
-        attachmentWrap.appendChild(download);
-        card.appendChild(attachmentWrap);
-      }
+      appendSubmissionFiles(card, submission);
 
       const status = document.createElement('div');
       status.className = 'submission-meta';
@@ -850,18 +950,15 @@ export function initApp() {
 
   function doLogout() {
     state.auth.currentUser = null;
-    state.assignments.selectedSubmissionId = null;
-    state.assignments.pendingAttachment = null;
-    state.assignments.removeAttachment = false;
-    state.assignments.attachmentLoading = false;
-    state.assignments.editingId = null;
-    state.assignments.editingDraft = null;
+    resetAssignmentState({ clearData: true });
+    state.assignments.backendEnabled = false;
+    state.assignments.backendLoading = false;
+    state.assignments.backendError = null;
     
     // Clear localStorage for Google OAuth
     localStorage.removeItem('isl-token');
     localStorage.removeItem('isl-user');
     
-    if (assignmentFileInput) assignmentFileInput.value = '';
     updateAuthUI();
     showLanding();
     toast('Anda telah keluar.', 'info');
@@ -883,28 +980,38 @@ export function initApp() {
     if (!state.auth.currentUser) showLanding();
   });
 
-  loginForm?.addEventListener('submit', (e) => {
+  loginForm?.addEventListener('submit', async (e) => {
     e.preventDefault();
     const username = (loginUsername?.value || '').trim();
     const password = (loginPassword?.value || '').trim();
-    if (loginError) loginError.textContent = '';
-    const found = USERS.find((user) => user.username === username && user.password === password);
-    if (!found) {
-      if (loginError) loginError.textContent = 'Username atau password salah.';
+    if (!username || !password) {
+      if (loginError) loginError.textContent = 'Silakan isi username dan password.';
       return;
     }
-    state.auth.currentUser = sanitizeUser(found);
-    state.assignments.selectedSubmissionId = null;
-    state.assignments.pendingAttachment = null;
-    state.assignments.removeAttachment = false;
-    state.assignments.attachmentLoading = false;
-    state.assignments.editingId = null;
-    state.assignments.editingDraft = null;
-    if (assignmentFileInput) assignmentFileInput.value = '';
-    hideLogin();
-    updateAuthUI();
-    revealApp();
-    toast(`Selamat datang, ${state.auth.currentUser.name}`, 'success');
+    if (loginError) loginError.textContent = '';
+    try {
+      state.assignments.backendLoading = true;
+      const { token, user } = await loginWithCredentials(username, password);
+      localStorage.setItem('isl-token', token);
+      localStorage.setItem('isl-user', JSON.stringify(user));
+      state.auth.currentUser = user;
+      resetAssignmentState();
+      await synchronizeAssignmentsFromBackend();
+      hideLogin();
+      updateAuthUI();
+      revealApp();
+      toast(`Selamat datang, ${user.name}`, 'success');
+    } catch (err) {
+      console.error('[Auth] Login gagal:', err);
+      if (loginError) {
+        loginError.textContent = err.message || 'Login gagal. Coba lagi.';
+      }
+      state.auth.currentUser = null;
+      localStorage.removeItem('isl-token');
+      localStorage.removeItem('isl-user');
+    } finally {
+      state.assignments.backendLoading = false;
+    }
   });
 
   logoutBtn?.addEventListener('click', doLogout);
@@ -919,7 +1026,7 @@ export function initApp() {
     updateAttachmentStatus();
   });
 
-  assignmentFileInput?.addEventListener('change', async (e) => {
+  assignmentFileInput?.addEventListener('change', (e) => {
     const file = e.target.files?.[0];
     if (!file) {
       state.assignments.pendingAttachment = null;
@@ -937,28 +1044,15 @@ export function initApp() {
       updateAttachmentStatus();
       return;
     }
-    state.assignments.pendingAttachment = null;
+    state.assignments.pendingAttachment = {
+      name: file.name,
+      size: file.size,
+      type: file.type || 'application/octet-stream',
+      file
+    };
     state.assignments.removeAttachment = false;
-    state.assignments.attachmentLoading = true;
+    state.assignments.attachmentLoading = false;
     updateAttachmentStatus();
-    try {
-      const dataUrl = await readFileAsDataUrl(file);
-      state.assignments.pendingAttachment = {
-        name: file.name,
-        size: file.size,
-        type: file.type || 'application/octet-stream',
-        dataUrl: String(dataUrl)
-      };
-      state.assignments.attachmentLoading = false;
-      updateAttachmentStatus();
-    } catch (err) {
-      console.error(err);
-      toast('Gagal memproses dokumen. Coba pilih file lain.');
-      state.assignments.pendingAttachment = null;
-      state.assignments.attachmentLoading = false;
-      if (assignmentFileInput) assignmentFileInput.value = '';
-      updateAttachmentStatus();
-    }
   });
 
   assignmentFileClear?.addEventListener('click', () => {
@@ -971,7 +1065,7 @@ export function initApp() {
       state.assignments.removeAttachment = false;
     } else {
       const submission = getActiveStudentSubmission();
-      if (submission?.attachment) {
+      if (submission?.files?.length) {
         state.assignments.removeAttachment = true;
         state.assignments.attachmentLoading = false;
         if (assignmentFileInput) assignmentFileInput.value = '';
@@ -1136,75 +1230,121 @@ export function initApp() {
     toast('Tugas diperbarui.');
   });
 
-  assignmentForm?.addEventListener('submit', (e) => {
+  assignmentForm?.addEventListener('submit', async (e) => {
     e.preventDefault();
     const user = state.auth.currentUser;
     if (!user || user.role !== 'student') {
       showLogin();
       return;
     }
-    if (state.assignments.attachmentLoading) {
-      toast('Tunggu hingga dokumen selesai diproses.');
+    if (state.assignments.backendLoading) {
+      toast('Sedang memproses pengumpulan sebelumnya. Tunggu sebentar.');
       return;
     }
+
     const fd = new FormData(assignmentForm);
     const assignmentId = String(fd.get('assignmentId') || '').trim();
     const link = String(fd.get('link') || '').trim();
     const notes = String(fd.get('notes') || '').trim();
     if (!assignmentId) return;
 
-    const now = new Date().toISOString();
     const existing = state.assignments.submissions.find(
       (item) => item.assignmentId === assignmentId && item.studentId === user.id
     );
     const pendingAttachment = state.assignments.pendingAttachment;
     const removingAttachment = state.assignments.removeAttachment;
-    const currentAttachment = existing?.attachment;
-    const finalAttachment = pendingAttachment
-      ? { ...pendingAttachment }
-      : !removingAttachment && currentAttachment
-      ? { ...currentAttachment }
-      : null;
+    const hasExistingFiles = existing?.files?.length;
 
-    if (!link && !notes && !finalAttachment) {
-      toast('Sertakan tautan, catatan, atau dokumen untuk pengumpulan.');
+    if (!link && !notes && !pendingAttachment && !hasExistingFiles) {
+      toast('Sertakan tautan, catatan, atau lampiran untuk pengumpulan.');
       return;
     }
 
-    if (existing) {
-      existing.link = link;
-      existing.notes = notes;
-      existing.submittedAt = now;
-      existing.updatedAt = now;
-      existing.grade = null;
-      existing.attachment = finalAttachment;
-      state.assignments.selectedSubmissionId = existing.id;
-    } else {
-      const submission = {
-        id: uid(),
-        assignmentId,
-        studentId: user.id,
-        studentName: user.name,
-        link,
-        notes,
-        submittedAt: now,
-        updatedAt: now,
-        grade: null,
-        attachment: finalAttachment
+    try {
+      state.assignments.backendLoading = true;
+      const { submission: savedSubmission } = await submitAssignment(assignmentId, { link, notes });
+      const submissionId = savedSubmission?.id;
+      if (!submissionId) {
+        throw new Error('Server tidak mengembalikan data pengumpulan.');
+      }
+
+      if (removingAttachment && existing?.files?.length) {
+        await Promise.all(
+          existing.files.map((file) =>
+            deleteSubmissionFile(submissionId, file.id).catch((err) => {
+              console.error('[Assignments] Gagal menghapus file:', file.id, err);
+              throw err;
+            })
+          )
+        );
+      }
+
+      if (pendingAttachment?.file) {
+        const upload = await requestSubmissionUpload(submissionId, {
+          fileName: pendingAttachment.name,
+          fileSize: pendingAttachment.size,
+          contentType: pendingAttachment.type || 'application/octet-stream'
+        });
+
+        const uploadResponse = await fetch(upload.uploadUrl, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': pendingAttachment.type || 'application/octet-stream',
+            'x-upsert-token': upload.token
+          },
+          body: pendingAttachment.file
+        });
+
+        if (!uploadResponse.ok) {
+          throw new Error('Gagal mengunggah dokumen. Coba lagi.');
+        }
+
+        await confirmSubmissionFile(submissionId, {
+          fileId: upload.fileId,
+          storagePath: upload.storagePath,
+          fileName: pendingAttachment.name,
+          contentType: pendingAttachment.type || 'application/octet-stream',
+          fileSize: pendingAttachment.size
+        });
+      }
+
+      let files = [];
+      try {
+        files = await listSubmissionFilesApi(submissionId);
+      } catch (err) {
+        if (err?.status === 503) {
+          console.warn('[Assignments] Storage tidak dikonfigurasi:', err.message);
+          toast(err.message || 'Penyimpanan file belum dikonfigurasi.', 'warning');
+        } else {
+          throw err;
+        }
+      }
+      const latestSubmission = {
+        ...savedSubmission,
+        files
       };
-      state.assignments.submissions.push(submission);
-      state.assignments.selectedSubmissionId = submission.id;
+
+      upsertSubmissionInState(latestSubmission);
+      state.assignments.selectedSubmissionId = submissionId;
+
+      assignmentForm.reset();
+      if (assignmentSelect) assignmentSelect.value = assignmentId;
+
+      state.assignments.pendingAttachment = null;
+      state.assignments.removeAttachment = false;
+      state.assignments.attachmentLoading = false;
+      if (assignmentFileInput) assignmentFileInput.value = '';
+
+      renderStudentAssignments();
+      renderAssistantAssignments();
+      updateAttachmentStatus();
+      toast('Pengumpulan tersimpan.', 'success');
+    } catch (err) {
+      console.error('[Assignments] Gagal menyimpan pengumpulan:', err);
+      toast(err.message || 'Gagal menyimpan pengumpulan.', 'danger');
+    } finally {
+      state.assignments.backendLoading = false;
     }
-    assignmentForm.reset();
-    if (assignmentSelect) assignmentSelect.value = assignmentId;
-    state.assignments.pendingAttachment = null;
-    state.assignments.removeAttachment = false;
-    state.assignments.attachmentLoading = false;
-    if (assignmentFileInput) assignmentFileInput.value = '';
-    updateAttachmentStatus();
-    renderStudentAssignments();
-    renderAssistantAssignments();
-    toast('Pengumpulan tersimpan.', 'success');
   });
 
   assistantSubmissionList?.addEventListener('click', (e) => {
@@ -1223,7 +1363,7 @@ export function initApp() {
     renderAssistantAssignments();
   });
 
-  gradeForm?.addEventListener('submit', (e) => {
+  gradeForm?.addEventListener('submit', async (e) => {
     e.preventDefault();
     const user = state.auth.currentUser;
     if (!user || user.role !== 'assistant') {
@@ -1232,8 +1372,7 @@ export function initApp() {
     }
     const submissionId = gradeSubmissionId?.value;
     if (!submissionId) return;
-    const submission = state.assignments.submissions.find((item) => item.id === submissionId);
-    if (!submission) return;
+
     const rawScore = gradeScore?.value ?? '';
     if (rawScore === '') {
       if (gradeInfo) {
@@ -1250,20 +1389,40 @@ export function initApp() {
       }
       return;
     }
-    submission.grade = {
-      score: Math.round(scoreValue),
-      feedback: (gradeFeedback?.value || '').trim(),
-      gradedAt: new Date().toISOString(),
-      graderId: user.id,
-      graderName: user.name
-    };
-    state.assignments.selectedSubmissionId = submission.id;
-    renderAssistantAssignments();
-    renderStudentAssignments();
-    toast('Penilaian tersimpan.', 'success');
+
+    try {
+      state.assignments.backendLoading = true;
+      const updatedSubmission = await gradeSubmission(submissionId, {
+        score: Math.round(scoreValue),
+        feedback: (gradeFeedback?.value || '').trim()
+      });
+
+      if (!updatedSubmission) {
+        throw new Error('Server tidak mengembalikan data penilaian.');
+      }
+
+      upsertSubmissionInState(updatedSubmission);
+      populateGradeForm(updatedSubmission);
+      renderAssistantAssignments();
+      renderStudentAssignments();
+      if (gradeInfo) {
+        gradeInfo.textContent = 'Penilaian tersimpan.';
+        gradeInfo.style.color = 'var(--success)';
+      }
+      toast('Penilaian tersimpan.', 'success');
+    } catch (err) {
+      console.error('[Assignments] Gagal menyimpan penilaian:', err);
+      if (gradeInfo) {
+        gradeInfo.textContent = err.message || 'Gagal menyimpan penilaian.';
+        gradeInfo.style.color = 'var(--danger)';
+      }
+      toast(err.message || 'Gagal menyimpan penilaian.', 'danger');
+    } finally {
+      state.assignments.backendLoading = false;
+    }
   });
 
-  gradeClear?.addEventListener('click', () => {
+  gradeClear?.addEventListener('click', async () => {
     const user = state.auth.currentUser;
     if (!user || user.role !== 'assistant') {
       showLogin();
@@ -1273,10 +1432,24 @@ export function initApp() {
     if (!submissionId) return;
     const submission = state.assignments.submissions.find((item) => item.id === submissionId);
     if (!submission || !submission.grade) return;
-    submission.grade = null;
-    renderAssistantAssignments();
-    renderStudentAssignments();
-    toast('Penilaian dihapus.');
+
+    try {
+      state.assignments.backendLoading = true;
+      const updatedSubmission = await clearSubmissionGrade(submissionId);
+      if (!updatedSubmission) {
+        throw new Error('Server tidak mengembalikan data setelah penghapusan nilai.');
+      }
+      upsertSubmissionInState(updatedSubmission);
+      populateGradeForm(updatedSubmission);
+      renderAssistantAssignments();
+      renderStudentAssignments();
+      toast('Penilaian dihapus.', 'info');
+    } catch (err) {
+      console.error('[Assignments] Gagal menghapus penilaian:', err);
+      toast(err.message || 'Gagal menghapus penilaian.', 'danger');
+    } finally {
+      state.assignments.backendLoading = false;
+    }
   });
 
   // Smooth scroll for Learn More
@@ -1294,6 +1467,8 @@ export function initApp() {
     try {
       state.auth.currentUser = JSON.parse(savedUser);
       console.log('[App] Session restored:', state.auth.currentUser.name);
+      resetAssignmentState({ clearData: true });
+      synchronizeAssignmentsFromBackend();
     } catch (err) {
       console.error('[App] Failed to restore session:', err);
       localStorage.removeItem('isl-token');
@@ -1308,6 +1483,8 @@ export function initApp() {
     console.log('[App] Google login success event received');
     const { user } = event.detail;
     state.auth.currentUser = user;
+    resetAssignmentState({ clearData: true });
+    synchronizeAssignmentsFromBackend();
     updateAuthUI();
   });
 
@@ -1317,6 +1494,20 @@ export function initApp() {
     const { user } = event.detail;
     state.auth.currentUser = user;
     updateAuthUI();
+  });
+
+  window.addEventListener('auth-state-changed', () => {
+    const savedToken = localStorage.getItem('isl-token');
+    const savedUser = localStorage.getItem('isl-user');
+    if (!savedToken || !savedUser) return;
+    try {
+      state.auth.currentUser = JSON.parse(savedUser);
+      resetAssignmentState({ clearData: true });
+      synchronizeAssignmentsFromBackend();
+      updateAuthUI();
+    } catch (err) {
+      console.error('[App] Failed to handle auth-state-changed:', err);
+    }
   });
 
   // WORKAROUND: Force profile button visibility check
@@ -3251,34 +3442,52 @@ export function initApp() {
     if (data.assignments?.submissions) {
       state.assignments.submissions = data.assignments.submissions
         .filter((item) => item && item.assignmentId && item.studentId)
-        .map((item) => ({
-          id: item.id || uid(),
-          assignmentId: item.assignmentId,
-          studentId: item.studentId,
-          studentName: item.studentName || item.studentId,
-          link: item.link || '',
-          notes: item.notes || '',
-          submittedAt: item.submittedAt || new Date().toISOString(),
-          updatedAt: item.updatedAt || item.submittedAt || new Date().toISOString(),
-          attachment:
-            item.attachment && item.attachment.dataUrl
+        .map((item) => {
+          const files = Array.isArray(item.files)
+            ? item.files.map((file) => ({
+                id: file.id || uid(),
+                originalName: file.originalName || file.name || 'dokumen',
+                contentType: file.contentType || file.type || 'application/octet-stream',
+                sizeBytes: Number(file.sizeBytes ?? file.size ?? 0),
+                storagePath: file.storagePath || '',
+                uploadedBy: file.uploadedBy || null,
+                createdAt: file.createdAt || new Date().toISOString()
+              }))
+            : [];
+
+          if (!files.length && item.attachment && item.attachment.dataUrl) {
+            files.push({
+              id: uid(),
+              originalName: item.attachment.name || 'dokumen',
+              contentType: item.attachment.type || 'application/octet-stream',
+              sizeBytes: Number(item.attachment.size) || 0,
+              storagePath: item.attachment.dataUrl,
+              uploadedBy: item.studentId,
+              createdAt: item.submittedAt || new Date().toISOString()
+            });
+          }
+
+          return {
+            id: item.id || uid(),
+            assignmentId: item.assignmentId,
+            studentId: item.studentId,
+            studentName: item.studentName || item.studentId,
+            link: item.link || '',
+            notes: item.notes || '',
+            submittedAt: item.submittedAt || new Date().toISOString(),
+            updatedAt: item.updatedAt || item.submittedAt || new Date().toISOString(),
+            files,
+            grade: item.grade
               ? {
-                  name: item.attachment.name || 'dokumen',
-                  size: Number(item.attachment.size) || 0,
-                  type: item.attachment.type || 'application/octet-stream',
-                  dataUrl: item.attachment.dataUrl
+                  score: Number(item.grade.score) || 0,
+                  feedback: item.grade.feedback || '',
+                  gradedAt: item.grade.gradedAt || new Date().toISOString(),
+                  graderId: item.grade.graderId || '',
+                  graderName: item.grade.graderName || ''
                 }
-              : null,
-          grade: item.grade
-            ? {
-                score: Number(item.grade.score) || 0,
-                feedback: item.grade.feedback || '',
-                gradedAt: item.grade.gradedAt || new Date().toISOString(),
-                graderId: item.grade.graderId || '',
-                graderName: item.grade.graderName || ''
-              }
-            : null
-        }));
+              : null
+          };
+        });
     } else {
       state.assignments.submissions = [];
     }
