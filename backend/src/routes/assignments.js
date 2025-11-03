@@ -159,7 +159,7 @@ assignmentsRouter.post('/assignments/:assignmentId/submissions', requireAuth('st
   }
 });
 
-assignmentsRouter.post('/submissions/:submissionId/grade', requireAuth('assistant'), async (req, res, next) => {
+assignmentsRouter.post('/submissions/:submissionId/grade', requireAuth('assistant', 'admin'), async (req, res, next) => {
   try {
     const submission = await findSubmissionById(req.params.submissionId);
     if (!submission) {
@@ -191,7 +191,7 @@ assignmentsRouter.post('/submissions/:submissionId/grade', requireAuth('assistan
   }
 });
 
-assignmentsRouter.delete('/submissions/:submissionId/grade', requireAuth('assistant'), async (req, res, next) => {
+assignmentsRouter.delete('/submissions/:submissionId/grade', requireAuth('assistant', 'admin'), async (req, res, next) => {
   try {
     const submission = await findSubmissionById(req.params.submissionId);
     if (!submission) {

@@ -3,7 +3,7 @@
 
 create table if not exists public.users (
   id text primary key,
-  role text not null check (role in ('assistant', 'student')),
+  role text not null check (role in ('admin', 'assistant', 'student')),
   username text not null unique,
   name text not null,
   password_hash text,

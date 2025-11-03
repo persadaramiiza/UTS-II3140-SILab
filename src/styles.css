@@ -2485,6 +2485,7 @@ label input, label textarea, label select{margin-top:6px; width:100%}
   background:rgba(17,22,51,0.6);
 }
 .form-hint{font-size:12px; color:var(--muted); margin:8px 0 0}
+.form-error{font-size:13px; color:#f87171; margin:0;}
 .submission-list{display:grid; gap:16px}
 .submission-meta{
   display:flex; flex-wrap:wrap; gap:8px;
@@ -2543,6 +2544,75 @@ label input, label textarea, label select{margin-top:6px; width:100%}
 .form-actions button{flex:1}
 .account-name{font-size:16px; font-weight:700; margin-bottom:4px}
 .account-role{font-size:13px; color:var(--muted)}
+.admin-form{
+  display:flex;
+  flex-direction:column;
+  gap:16px;
+}
+.admin-form-grid{
+  display:grid;
+  gap:12px;
+  grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+}
+.admin-form-grid label{
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+  font-size:14px;
+}
+.admin-users-card{margin-top:20px;}
+.admin-user-list{
+  display:flex;
+  flex-direction:column;
+  gap:14px;
+}
+.admin-user-card{
+  border:1px solid rgba(148,163,184,0.18);
+  border-radius:12px;
+  padding:16px;
+  background:var(--bg-card);
+  box-shadow:var(--shadow-sm);
+  display:flex;
+  flex-direction:column;
+  gap:14px;
+}
+.admin-user-header{
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-start;
+  gap:12px;
+}
+.admin-user-header h4{margin:0;}
+.badge-role-admin{
+  background:rgba(129,140,248,0.18);
+  color:var(--accent);
+}
+.badge-role-assistant{
+  background:rgba(56,189,248,0.18);
+  color:var(--accent-2);
+}
+.badge-role-student{
+  background:rgba(52,211,153,0.18);
+  color:var(--success);
+}
+.admin-user-grid{
+  display:grid;
+  gap:12px;
+  grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+}
+.admin-user-grid label{
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+  font-size:14px;
+}
+.admin-user-actions{
+  display:flex;
+  justify-content:flex-end;
+  gap:10px;
+  flex-wrap:wrap;
+}
+.admin-user-actions .secondary-btn.small{margin-left:0;}
 .badge.success{
   background:rgba(16,185,129,0.16);
   border:1px solid rgba(16,185,129,0.35);

@@ -59,6 +59,7 @@ export const appMarkup = `
         <li>Asisten &mdash; <code>asisten</code> / <code>asisten123</code></li>
         <li>Mahasiswa &mdash; <code>mahasiswa</code> / <code>mahasiswa123</code></li>
         <li>Mahasiswa 2 &mdash; <code>mahasiswa2</code> / <code>mahasiswa234</code></li>
+        <li>Admin &mdash; <code>admin</code> / <code>admin123</code></li>
       </ul>
     </div>
   </div>
@@ -895,6 +896,56 @@ export const appMarkup = `
             </div>
           </form>
         </div>
+      </div>
+
+      <div id="admin-panel" class="assignment-panel">
+        <h2>Manajemen Pengguna</h2>
+        <form id="admin-user-form" class="card admin-form">
+          <h3>Tambah Pengguna</h3>
+          <div class="admin-form-grid">
+            <label>Nama Lengkap
+              <input name="name" placeholder="Nama lengkap" required />
+            </label>
+            <label>Username
+              <input name="username" placeholder="Username unik" required />
+            </label>
+            <label>Role
+              <select name="role" required>
+                <option value="student">Mahasiswa</option>
+                <option value="assistant">Asisten</option>
+                <option value="admin">Admin</option>
+              </select>
+            </label>
+            <label>Password
+              <input type="password" name="password" placeholder="Wajib untuk non-mahasiswa" />
+            </label>
+            <label>Email
+              <input type="email" name="email" placeholder="Email (opsional)" />
+            </label>
+            <label>Nomor Mahasiswa
+              <input type="text" name="studentId" placeholder="Opsional" />
+            </label>
+            <label>Departemen
+              <input type="text" name="department" placeholder="Opsional" />
+            </label>
+            <label>Telepon
+              <input type="text" name="phone" placeholder="Opsional" />
+            </label>
+            <label>Bio
+              <textarea name="bio" rows="2" placeholder="Opsional"></textarea>
+            </label>
+          </div>
+          <p id="admin-user-form-message" class="muted"></p>
+          <div class="form-actions">
+            <button type="submit">Tambah Pengguna</button>
+          </div>
+          <p class="form-hint">Admin dapat mengubah role pengguna pada daftar di bawah, termasuk mempromosikan menjadi asisten atau menurunkan menjadi mahasiswa.</p>
+        </form>
+
+        <section class="card admin-users-card">
+          <h3>Daftar Pengguna</h3>
+          <div id="admin-user-list" class="admin-user-list"></div>
+        </section>
       </div>
     </section>
   </section>

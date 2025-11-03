@@ -20,6 +20,17 @@ function buildDefaultData() {
   return {
     users: [
       {
+        id: 'admin-isl',
+        role: 'admin',
+        username: 'admin',
+        name: 'Administrator ISL',
+        passwordHash: hash('admin123'),
+        createdAt: now,
+        updatedAt: now,
+        authProvider: 'local',
+        email: 'admin@isl.local'
+      },
+      {
         id: 'assistant-isl',
         role: 'assistant',
         username: 'asisten',
@@ -228,6 +239,23 @@ async function ensureSupabaseDefaults() {
       .upsert(defaults.users.map(toUserRow), { onConflict: 'id' });
     handleSupabaseError('users.upsert', insertUsersError);
     console.log('[Supabase] Seeded default users');
+  } else {
+    const defaultAdmin = defaults.users.find((user) => user.username === 'admin');
+    if (defaultAdmin) {
+      const { data: adminRecord, error: adminCheckError } = await supabase
+        .from('users')
+        .select('id')
+        .eq('username', defaultAdmin.username)
+        .maybeSingle();
+      handleSupabaseError('users.findAdmin', adminCheckError);
+      if (!adminRecord) {
+        const { error: insertAdminError } = await supabase
+          .from('users')
+          .upsert(toUserRow(defaultAdmin), { onConflict: 'username' });
+        handleSupabaseError('users.seedAdmin', insertAdminError);
+        console.log('[Supabase] Default admin user ensured.');
+      }
+    }
   }
 
   const { error: assignmentsHeadError, count: assignmentsCount } = await supabase
@@ -454,6 +482,74 @@ export async function listAssignments() {
 
   const { assignments } = await getState();
   return assignments.slice();
+}
+
+export async function listUsers() {
+  if (useSupabase) {
+    const { data, error } = await supabase
+      .from('users')
+      .select('*')
+      .order('created_at', { ascending: true });
+    handleSupabaseError('users.list', error);
+    return (data || []).map(fromUserRow);
+  }
+
+  const { users } = await getState();
+  return users.map((user) => ({ ...user }));
+}
+
+export async function deleteUser(id) {
+  if (useSupabase) {
+    const { error } = await supabase.from('users').delete().eq('id', id);
+    handleSupabaseError('users.delete', error);
+    return true;
+  }
+
+  const state = await getState();
+  const index = state.users.findIndex((user) => user.id === id);
+  if (index === -1) return false;
+  state.users.splice(index, 1);
+  await persist();
+  return true;
+}
+
+export async function createUser({
+  id,
+  username,
+  name,
+  role,
+  email,
+  password,
+  picture,
+  studentId,
+  department,
+  phone,
+  bio,
+  authProvider = 'local'
+}) {
+  const userId = id || randomUUID();
+  const now = new Date().toISOString();
+  const passwordHash = password ? await bcrypt.hash(password, 10) : null;
+
+  const newUser = {
+    id: userId,
+    username,
+    name,
+    role,
+    email: email || null,
+    picture: picture || null,
+    studentId: studentId || null,
+    department: department || null,
+    phone: phone || null,
+    bio: bio || null,
+    passwordHash,
+    createdAt: now,
+    updatedAt: now,
+    authProvider: passwordHash ? authProvider : 'google'
+  };
+
+  const stored = await upsertUser(newUser);
+  return stored;
 }
 
 export async function listSubmissions() {
