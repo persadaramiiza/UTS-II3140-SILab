@@ -513,13 +513,43 @@ export function initApp() {
     });
   }
 
+  function openAdminModal(forceRefresh = false) {
+    if (!adminModal) return;
+    if (!state.auth.currentUser || state.auth.currentUser.role !== 'admin') {
+      showLogin();
+      return;
+    }
+    adminModal.classList.add('is-open');
+    adminModal.setAttribute('aria-hidden', 'false');
+    document.body.classList.add('modal-open');
+    if (forceRefresh || !state.users.loaded) {
+      refreshAdminUsers({ force: true });
+    }
+  }
+
+  function closeAdminModal() {
+    if (!adminModal) return;
+    adminModal.classList.remove('is-open');
+    adminModal.setAttribute('aria-hidden', 'true');
+    document.body.classList.remove('modal-open');
+  }
+
   function renderAdminUsers() {
     const isAdmin = state.auth.currentUser?.role === 'admin';
+
+    adminOpenButtons.forEach((btn) => {
+      if (!btn) return;
+      btn.style.display = isAdmin ? 'inline-flex' : 'none';
+    });
+
     adminInterfaces.forEach(({ panel }) => {
-      if (panel) setPanelVisibility(panel, isAdmin);
+      if (panel && panel !== adminModal) {
+        setPanelVisibility(panel, isAdmin);
+      }
     });
 
     if (!isAdmin) {
+      closeAdminModal();
       adminInterfaces.forEach(({ list, message }) => {
         if (list) list.innerHTML = '';
         if (message) {
@@ -1420,6 +1450,28 @@ export function initApp() {
       }
     }
     updateAttachmentStatus();
+  });
+
+  adminOpenButtons.forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      openAdminModal(true);
+    });
+  });
+
+  adminModalClose?.addEventListener('click', (e) => {
+    e.preventDefault();
+    closeAdminModal();
+  });
+
+  adminModalBackdrop?.addEventListener('click', () => {
+    closeAdminModal();
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && adminModal && adminModal.classList.contains('is-open')) {
+      closeAdminModal();
+    }
   });
 
   adminInterfaces.forEach(({ form, message }) => {

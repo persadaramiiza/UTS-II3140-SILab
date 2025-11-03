@@ -300,6 +300,69 @@ body{
 .landing-admin-panel .form-actions button{
   flex:unset;
 }
+
+.admin-modal{
+  position:fixed;
+  inset:0;
+  display:none;
+  z-index:1200;
+}
+.admin-modal.is-open{
+  display:block;
+}
+.admin-modal__backdrop{
+  position:absolute;
+  inset:0;
+  background:rgba(6,11,25,0.78);
+  backdrop-filter:blur(10px);
+}
+.admin-modal__dialog{
+  position:relative;
+  margin:60px auto;
+  max-width:1100px;
+  background:rgba(10,14,26,0.95);
+  border:1px solid rgba(125,211,252,0.18);
+  border-radius:24px;
+  padding:32px 36px;
+  box-shadow:0 40px 120px rgba(0,0,0,0.5);
+  overflow:hidden;
+}
+.admin-modal__close{
+  position:absolute;
+  top:18px;
+  right:22px;
+  width:40px;
+  height:40px;
+  border-radius:50%;
+  border:none;
+  background:rgba(255,255,255,0.08);
+  color:#fff;
+  font-size:24px;
+  cursor:pointer;
+  transition:transform 0.2s ease, background 0.2s ease;
+}
+.admin-modal__close:hover{
+  transform:rotate(90deg);
+  background:rgba(255,255,255,0.18);
+}
+.admin-modal__header{
+  margin-bottom:24px;
+}
+.admin-modal__header h2{
+  margin:0 0 8px 0;
+}
+.admin-modal__header p{
+  margin:0;
+  color:rgba(255,255,255,0.75);
+}
+.admin-modal__content{
+  display:grid;
+  gap:20px;
+}
+
+body.modal-open{
+  overflow:hidden;
+}
 .floating-card .card-icon{font-size:40px; filter:drop-shadow(0 2px 8px rgba(0,0,0,0.3))}
 .floating-card .card-text{
   font-size:15px; font-weight:700; color:var(--text-light);
@@ -2555,6 +2618,16 @@ label input, label textarea, label select{margin-top:6px; width:100%}
 }
 .attachment-info .file-size{
   font-size:12px; color:var(--muted);
+}
+
+@media (max-width: 768px) {
+  .admin-modal__dialog{
+    margin:40px 16px;
+    padding:24px;
+  }
+  .admin-modal__content{
+    grid-template-columns:1fr;
+  }
 }
 .attachment-info.attachment-list{
   flex-direction:column;

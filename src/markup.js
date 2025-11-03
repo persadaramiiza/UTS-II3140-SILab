@@ -945,11 +945,70 @@ export const appMarkup = `
 
         <section class="card admin-users-card">
           <h3>Daftar Pengguna</h3>
-          <div id="admin-user-list" class="admin-user-list"></div>
-        </section>
-      </div>
+      <div id="admin-user-list" class="admin-user-list"></div>
     </section>
-  </section>
+  </div>
+</section>
+</section>
+
+<!-- Admin Management Modal -->
+<div id="admin-modal" class="admin-modal" aria-hidden="true">
+  <div id="adminModalBackdrop" class="admin-modal__backdrop"></div>
+  <div class="admin-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="adminModalTitle">
+    <button type="button" id="adminModalClose" class="admin-modal__close" aria-label="Tutup panel admin">&times;</button>
+    <header class="admin-modal__header">
+      <h2 id="adminModalTitle">Panel Admin</h2>
+      <p>Kelola akun pengguna. Panel ini hanya tersedia untuk administrator.</p>
+    </header>
+    <div id="landing-admin-content" class="admin-modal__content">
+      <form id="landing-admin-form" class="card admin-form">
+        <h3>Tambah Pengguna</h3>
+        <div class="admin-form-grid">
+          <label>Nama Lengkap
+            <input name="name" placeholder="Nama lengkap" required />
+          </label>
+          <label>Username
+            <input name="username" placeholder="Username unik" required />
+          </label>
+          <label>Role
+            <select name="role" required>
+              <option value="student">Mahasiswa</option>
+              <option value="assistant">Asisten</option>
+              <option value="admin">Admin</option>
+            </select>
+          </label>
+          <label>Password
+            <input type="password" name="password" placeholder="Wajib untuk non-mahasiswa" />
+          </label>
+          <label>Email
+            <input type="email" name="email" placeholder="Email (opsional)" />
+          </label>
+          <label>Nomor Mahasiswa
+            <input type="text" name="studentId" placeholder="Opsional" />
+          </label>
+          <label>Departemen
+            <input type="text" name="department" placeholder="Opsional" />
+          </label>
+          <label>Telepon
+            <input type="text" name="phone" placeholder="Opsional" />
+          </label>
+          <label>Bio
+            <textarea name="bio" rows="2" placeholder="Opsional"></textarea>
+          </label>
+        </div>
+        <p id="landing-admin-form-message" class="muted"></p>
+        <div class="form-actions">
+          <button type="submit">Tambah Pengguna</button>
+        </div>
+      </form>
+
+      <section class="card admin-users-card">
+        <h3>Daftar Pengguna</h3>
+        <div id="landing-admin-list" class="admin-user-list"></div>
+      </section>
+    </div>
+  </div>
+</div>
 </main>
 
 <footer>
