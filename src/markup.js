@@ -343,7 +343,7 @@ export const appMarkup = `
 
     <footer class="landing-footer">
   <p><strong>SILab Suite</strong> — Information Systems Laboratory</p>
-      <p>Universitas Pendidikan Indonesia · Platform Penelitian Sistem Informasi</p>
+      <p>Institut Teknologi Bandung · Platform Penelitian Sistem Informasi</p>
       <p style="margin-top:12px; font-size:13px; opacity:0.7">Built with ❤️ for research and education</p>
     </footer>
   </div>
