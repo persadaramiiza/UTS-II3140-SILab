@@ -186,9 +186,10 @@ export const appMarkup = `
         <span class="hero-badge">🎓 Information Systems Laboratory</span>
         <h1 class="hero-title">Platform Penelitian Sistem Informasi</h1>
         <p class="hero-subtitle">Kumpulan alat penelitian terintegrasi untuk Requirements Engineering, Enterprise Architecture, Interaction Design, dan Conceptual Modeling — semua dalam satu workspace.</p>
-        <div class="hero-cta">
-          <button id="getStarted" class="cta-btn large" type="button"><span>Mulai Sekarang</span></button>
-          <button id="learnMore" class="secondary-btn large" type="button">Jelajahi Modul</button>
+       <div class="hero-cta">
+         <button id="getStarted" class="cta-btn large" type="button"><span>Mulai Sekarang</span></button>
+         <button id="learnMore" class="secondary-btn large" type="button">Jelajahi Modul</button>
+          <button id="openAdminPanel" data-action="open-admin" class="secondary-btn large admin-trigger" type="button" style="display:none;">Panel Admin</button>
         </div>
         <div class="hero-stats">
           <div class="stat">
@@ -222,61 +223,6 @@ export const appMarkup = `
           <span class="card-icon">📊</span>
           <span class="card-text">Data Modeling</span>
         </div>
-      </div>
-    </section>
-
-    <section id="landing-admin-panel" class="landing-admin-panel">
-      <div class="landing-admin-info">
-        <h2>Panel Admin</h2>
-        <p>Kelola akun pengguna langsung dari halaman utama. Panel ini hanya terlihat oleh akun admin.</p>
-        <p class="form-hint">Gunakan panel ini untuk menambah, memperbarui, atau menghapus akun web.</p>
-      </div>
-      <div class="landing-admin-content">
-        <form id="landing-admin-form" class="card admin-form">
-          <h3>Tambah Pengguna</h3>
-          <div class="admin-form-grid">
-            <label>Nama Lengkap
-              <input name="name" placeholder="Nama lengkap" required />
-            </label>
-            <label>Username
-              <input name="username" placeholder="Username unik" required />
-            </label>
-            <label>Role
-              <select name="role" required>
-                <option value="student">Mahasiswa</option>
-                <option value="assistant">Asisten</option>
-                <option value="admin">Admin</option>
-              </select>
-            </label>
-            <label>Password
-              <input type="password" name="password" placeholder="Wajib untuk non-mahasiswa" />
-            </label>
-            <label>Email
-              <input type="email" name="email" placeholder="Email (opsional)" />
-            </label>
-            <label>Nomor Mahasiswa
-              <input type="text" name="studentId" placeholder="Opsional" />
-            </label>
-            <label>Departemen
-              <input type="text" name="department" placeholder="Opsional" />
-            </label>
-            <label>Telepon
-              <input type="text" name="phone" placeholder="Opsional" />
-            </label>
-            <label>Bio
-              <textarea name="bio" rows="2" placeholder="Opsional"></textarea>
-            </label>
-          </div>
-          <p id="landing-admin-form-message" class="muted"></p>
-          <div class="form-actions">
-            <button type="submit">Tambah Pengguna</button>
-          </div>
-        </form>
-
-        <section class="card admin-users-card">
-          <h3>Daftar Pengguna</h3>
-          <div id="landing-admin-list" class="admin-user-list"></div>
-        </section>
       </div>
     </section>
 

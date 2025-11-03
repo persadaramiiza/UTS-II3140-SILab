@@ -84,14 +84,18 @@ export function initApp() {
   const adminUserForm = $('#admin-user-form');
   const adminUserFormMessage = $('#admin-user-form-message');
   const adminUserList = $('#admin-user-list');
-  const landingAdminPanel = $('#landing-admin-panel');
+  const adminModal = $('#admin-modal');
+  const adminModalClose = $('#adminModalClose');
+  const adminModalBackdrop = $('#adminModalBackdrop');
+  const adminOpenButtons = Array.from(document.querySelectorAll('[data-action="open-admin"]'));
+  const landingAdminContent = $('#landing-admin-content');
   const landingAdminForm = $('#landing-admin-form');
   const landingAdminFormMessage = $('#landing-admin-form-message');
   const landingAdminList = $('#landing-admin-list');
   const adminInterfaces = [
     { panel: adminPanel, form: adminUserForm, message: adminUserFormMessage, list: adminUserList },
-    { panel: landingAdminPanel, form: landingAdminForm, message: landingAdminFormMessage, list: landingAdminList }
-  ].filter((iface) => iface.panel || iface.form || iface.list);
+    { panel: adminModal, form: landingAdminForm, message: landingAdminFormMessage, list: landingAdminList }
+  ].filter((iface) => iface.form || iface.list);
   const tipStudent = $('#assignment-tip-student');
   const tipAssistant = $('#assignment-tip-assistant');
   const assignmentSelect = $('#assignment-select');
