@@ -90,7 +90,8 @@ function buildDefaultData() {
         updatedAt: now
       }
     ],
-    submissions: []
+    submissions: [],
+    announcements: []
   };
 }
 
@@ -482,6 +483,70 @@ export async function listAssignments() {
 
   const { assignments } = await getState();
   return assignments.slice();
+}
+
+export async function listAnnouncements() {
+  if (useSupabase) {
+    const { data, error } = await supabase
+      .from('announcements')
+      .select('*')
+      .order('created_at', { ascending: false });
+    handleSupabaseError('announcements.list', error);
+    return (data || []).map((row) => ({
+      id: row.id,
+      title: row.title,
+      content: row.content,
+      createdAt: row.created_at,
+      createdBy: row.created_by,
+      createdByName: row.created_by_name
+    }));
+  }
+
+  const state = await getState();
+  return state.announcements ? state.announcements.slice().sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)) : [];
+}
+
+export async function createAnnouncement({ title, content, createdBy, createdByName }) {
+  const payload = {
+    id: randomUUID(),
+    title,
+    content,
+    createdAt: new Date().toISOString(),
+    createdBy,
+    createdByName
+  };
+
+  if (useSupabase) {
+    const { data, error } = await supabase
+      .from('announcements')
+      .insert({
+        id: payload.id,
+        title: payload.title,
+        content: payload.content,
+        created_by: payload.createdBy,
+        created_by_name: payload.createdByName,
+        created_at: payload.createdAt
+      })
+      .select()
+      .maybeSingle();
+    handleSupabaseError('announcements.create', error);
+    return data
+      ? {
+          id: data.id,
+          title: data.title,
+          content: data.content,
+          createdAt: data.created_at,
+          createdBy: data.created_by,
+          createdByName: data.created_by_name
+        }
+      : payload;
+  }
+
+  const state = await getState();
+  if (!state.announcements) state.announcements = [];
+  state.announcements.unshift(payload);
+  await persist();
+  return payload;
 }
 
 export async function listUsers() {

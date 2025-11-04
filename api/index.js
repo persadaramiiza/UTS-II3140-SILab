@@ -8,6 +8,7 @@ import { authenticateRequest } from '../backend/src/middleware/auth.js';
 import { authRouter } from '../backend/src/routes/auth.js';
 import { assignmentsRouter } from '../backend/src/routes/assignments.js';
 import { usersRouter } from '../backend/src/routes/users.js';
+import { announcementsRouter } from '../backend/src/routes/announcements.js';
 import { errorHandler, notFound } from '../backend/src/middleware/error.js';
 
 // Initialize store once
@@ -91,6 +92,7 @@ app.get('/api/health', (req, res) => {
 // Routes
 app.use('/api/auth', authRouter);
 app.use('/api/users', usersRouter);
+app.use('/api/announcements', announcementsRouter);
 app.use('/api', assignmentsRouter);
 
 app.use(notFound);

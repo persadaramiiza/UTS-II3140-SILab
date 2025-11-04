@@ -57,5 +57,16 @@ create table if not exists public.submission_files (
 
 create index if not exists submission_files_submission_id_idx on public.submission_files (submission_id);
 
+create table if not exists public.announcements (
+  id uuid primary key default gen_random_uuid(),
+  title text not null,
+  content text not null,
+  created_by text references public.users (id),
+  created_by_name text,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists announcements_created_at_idx on public.announcements (created_at desc);
+
 -- Remember to create a storage bucket (default name: submission-files) in Supabase Storage
 -- and grant the service role permission to read/write objects within that bucket.

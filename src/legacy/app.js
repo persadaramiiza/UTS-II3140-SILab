@@ -18,6 +18,10 @@ import {
   updateUserApi,
   deleteUserApi
 } from '../services/usersApi.js';
+import {
+  fetchAnnouncements,
+  createAnnouncement
+} from '../services/announcementsApi.js';
 
 let initialized = false;
 let cachedState = null;
@@ -96,6 +100,12 @@ export function initApp() {
     { panel: adminPanel, form: adminUserForm, message: adminUserFormMessage, list: adminUserList },
     { panel: adminModal, form: landingAdminForm, message: landingAdminFormMessage, list: landingAdminList }
   ].filter((iface) => iface.form || iface.list);
+  const landingAnnouncementSection = $('#landing-announcement-section');
+  const landingAnnouncementList = $('#landing-announcements');
+  const landingAnnouncementEmpty = $('#landing-announcements-empty');
+  const appAnnouncementList = $('#app-announcements');
+  const announcementForm = $('#announcement-form');
+  const announcementFormMessage = $('#announcement-form-message');
   const tipStudent = $('#assignment-tip-student');
   const tipAssistant = $('#assignment-tip-assistant');
   const assignmentSelect = $('#assignment-select');
@@ -159,6 +169,12 @@ export function initApp() {
       attachmentLoading: false,
       editingId: null,
       editingDraft: null
+    },
+    announcements: {
+      list: [],
+      loading: false,
+      error: null,
+      loaded: false
     },
     users: {
       list: [],
@@ -755,6 +771,141 @@ export function initApp() {
     }
   }
 
+  function createAnnouncementCard(item) {
+    const card = document.createElement('article');
+    card.className = 'announcement-card';
+    card.innerHTML = `
+      <header>
+        <h4>${escapeHtml(item.title)}</h4>
+        <span class="announcement-meta">${formatTimestamp(item.createdAt)} • ${escapeHtml(item.createdByName || 'Pengumuman')}</span>
+      </header>
+      <p>${escapeHtml(item.content)}</p>
+    `;
+    return card;
+  }
+
+  function renderAnnouncements() {
+    const { list, loading, error } = state.announcements;
+
+    const updateContainer = (listElem, emptyElem) => {
+      if (!listElem) return;
+      listElem.innerHTML = '';
+      if (loading) {
+        const p = document.createElement('p');
+        p.className = 'muted';
+        p.textContent = 'Memuat pengumuman...';
+        listElem.appendChild(p);
+        if (emptyElem) emptyElem.style.display = 'none';
+        return;
+      }
+      if (error) {
+        const p = document.createElement('p');
+        p.className = 'form-error';
+        p.textContent = error;
+        listElem.appendChild(p);
+        if (emptyElem) emptyElem.style.display = 'none';
+        return;
+      }
+      if (!list.length) {
+        if (emptyElem) {
+          emptyElem.style.display = 'block';
+        } else if (listElem === appAnnouncementList) {
+          const p = document.createElement('p');
+          p.className = 'muted announcement-placeholder';
+          p.textContent = 'Belum ada pengumuman.';
+          listElem.appendChild(p);
+        }
+        return;
+      }
+      if (emptyElem) emptyElem.style.display = 'none';
+      list.forEach((item) => listElem.appendChild(createAnnouncementCard(item)));
+    };
+
+    updateContainer(landingAnnouncementList, landingAnnouncementEmpty);
+    updateContainer(appAnnouncementList, null);
+
+    if (announcementForm) {
+      const isAssistant = state.auth.currentUser && (state.auth.currentUser.role === 'assistant' || state.auth.currentUser.role === 'admin');
+      announcementForm.style.display = isAssistant ? 'block' : 'none';
+      if (!isAssistant && announcementFormMessage) {
+        announcementFormMessage.textContent = '';
+        announcementFormMessage.className = 'muted';
+      }
+    }
+
+    if (landingAnnouncementSection) {
+      const shouldShow = loading || error || state.announcements.loaded;
+      landingAnnouncementSection.style.display = shouldShow ? 'block' : 'none';
+    }
+  }
+
+  async function refreshAnnouncements({ force = false } = {}) {
+    if (state.announcements.loading) return;
+    if (state.announcements.loaded && !force) {
+      renderAnnouncements();
+      return;
+    }
+    try {
+      state.announcements.loading = true;
+      renderAnnouncements();
+      const items = await fetchAnnouncements();
+      state.announcements.list = items;
+      state.announcements.error = null;
+      state.announcements.loaded = true;
+    } catch (err) {
+      state.announcements.error = err.message || 'Gagal memuat pengumuman.';
+      state.announcements.list = [];
+      state.announcements.loaded = false;
+    } finally {
+      state.announcements.loading = false;
+      renderAnnouncements();
+    }
+  }
+
+  async function handleAnnouncementCreate(e) {
+    e.preventDefault();
+    if (!state.auth.currentUser || (state.auth.currentUser.role !== 'assistant' && state.auth.currentUser.role !== 'admin')) {
+      showLogin();
+      return;
+    }
+    if (!announcementForm) return;
+    const formData = new FormData(announcementForm);
+    const title = String(formData.get('title') || '').trim();
+    const content = String(formData.get('content') || '').trim();
+
+    if (!title || !content) {
+      if (announcementFormMessage) {
+        announcementFormMessage.textContent = 'Judul dan isi pengumuman wajib diisi.';
+        announcementFormMessage.className = 'form-error';
+      }
+      return;
+    }
+
+    try {
+      if (announcementFormMessage) {
+        announcementFormMessage.textContent = 'Menyimpan pengumuman...';
+        announcementFormMessage.className = 'muted';
+      }
+      const announcement = await createAnnouncement({ title, content });
+      announcementForm.reset();
+      if (announcementFormMessage) {
+        announcementFormMessage.textContent = '';
+        announcementFormMessage.className = 'muted';
+      }
+      state.announcements.list = [announcement, ...state.announcements.list];
+      state.announcements.loaded = true;
+      renderAnnouncements();
+      toast('Pengumuman baru ditambahkan.', 'success');
+    } catch (err) {
+      console.error('[Announcements] create failed:', err);
+      if (announcementFormMessage) {
+        announcementFormMessage.textContent = err.message || 'Gagal menambahkan pengumuman.';
+        announcementFormMessage.className = 'form-error';
+      }
+      toast(err.message || 'Gagal menambahkan pengumuman.', 'danger');
+    }
+  }
+
   function resetAssignmentState({ clearData = false } = {}) {
     state.assignments.selectedSubmissionId = null;
     state.assignments.pendingAttachment = null;
@@ -1291,6 +1442,8 @@ export function initApp() {
       state.users.error = null;
       renderAdminUsers();
     }
+
+    renderAnnouncements();
   }
 
   // Update landing page auth UI (navbar buttons)
@@ -1485,6 +1638,16 @@ export function initApp() {
       closeAdminModal();
     }
   });
+
+  announcementForm?.addEventListener('submit', handleAnnouncementCreate);
+  if (announcementForm && announcementFormMessage) {
+    announcementForm.addEventListener('input', () => {
+      if (announcementFormMessage.textContent) {
+        announcementFormMessage.textContent = '';
+        announcementFormMessage.className = 'muted';
+      }
+    });
+  }
 
   adminInterfaces.forEach(({ form, message }) => {
     if (!form) return;
@@ -1884,6 +2047,7 @@ export function initApp() {
 
   ensureAssignmentOptions();
   clearGradeForm();
+  refreshAnnouncements();
   renderAdminUsers();
   
   // Restore session from localStorage (for Google OAuth)

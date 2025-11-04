@@ -10,6 +10,7 @@ import { authenticateRequest } from './middleware/auth.js';
 import { authRouter } from './routes/auth.js';
 import { assignmentsRouter } from './routes/assignments.js';
 import { usersRouter } from './routes/users.js';
+import { announcementsRouter } from './routes/announcements.js';
 import { errorHandler, notFound } from './middleware/error.js';
 
 async function bootstrap() {
@@ -85,6 +86,7 @@ async function bootstrap() {
 
   app.use('/api/auth', authRouter);
   app.use('/api/users', usersRouter);
+  app.use('/api/announcements', announcementsRouter);
   app.use('/api', assignmentsRouter);
 
   app.use(notFound);

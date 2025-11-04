@@ -300,6 +300,17 @@ export const appMarkup = `
       </div>
     </section>
 
+    <section id="landing-announcement-section" class="landing-announcements" style="display:none;">
+      <div class="section-header">
+        <h2>Papan Pengumuman</h2>
+        <p>Informasi terbaru seputar kegiatan laboratorium dan perkuliahan.</p>
+      </div>
+      <div id="landing-announcements-empty" class="announcement-empty" style="display:none;">
+        <p class="muted">Belum ada pengumuman yang ditampilkan.</p>
+      </div>
+      <div id="landing-announcements" class="announcement-list"></div>
+    </section>
+
     <section class="tech-stack">
       <div class="section-header">
         <h2>Dibangun dengan Teknologi Modern</h2>
@@ -813,6 +824,30 @@ export const appMarkup = `
     </aside>
 
     <section class="content assignments-content">
+      <section class="card announcements-card">
+        <header class="announcements-header">
+          <h2>Papan Pengumuman</h2>
+          <p class="muted">Simak informasi terbaru dari tim asisten laboratorium.</p>
+        </header>
+        <form id="announcement-form" class="announcement-form" style="display:none;">
+          <div class="announcement-form-grid">
+            <label>Judul Pengumuman
+              <input name="title" placeholder="Contoh: Jadwal asistensi tambahan" required />
+            </label>
+            <label>Isi Pengumuman
+              <textarea name="content" rows="3" placeholder="Tulis detail informasi untuk mahasiswa." required></textarea>
+            </label>
+          </div>
+          <div class="form-actions">
+            <button type="submit" class="cta-btn small">Publikasikan</button>
+          </div>
+        </form>
+        <p id="announcement-form-message" class="muted" aria-live="polite"></p>
+        <div id="app-announcements" class="announcement-list">
+          <p class="muted announcement-placeholder">Belum ada pengumuman.</p>
+        </div>
+      </section>
+
       <div id="assignment-guest-panel" class="assignment-panel">
         <div class="card empty-state">
           <h3>Login Diperlukan</h3>
