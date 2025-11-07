@@ -598,7 +598,7 @@ export function initApp() {
       row.innerHTML = `
         <div>
           <strong>${escapeHtml(topic.title || 'Tanpa judul')}</strong>
-          <p class="muted">${topic.questions.length} soal â€¢ ${escapeHtml(topic.description || 'Tidak ada deskripsi')}</p>
+          <p class="muted">${topic.questions.length} soal &bull; ${escapeHtml(topic.description || 'Tidak ada deskripsi')}</p>
         </div>
         <div class="quiz-builder-actions">
           <button type="button" data-action="set-active-topic" class="secondary-btn small">Pilih</button>
@@ -4830,6 +4830,7 @@ export function initApp() {
   cachedState = state;
   return state;
 }
+
 
 
 
