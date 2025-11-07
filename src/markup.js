@@ -726,12 +726,76 @@ export const appMarkup = `
           <li>Klik Submit untuk melihat hasil</li>
         </ul>
       </div>
+
+      <div id="quiz-builder" class="card quiz-builder" style="display:none;">
+        <h3>Kelola Kuis (Asisten)</h3>
+
+        <section class="quiz-builder-section">
+          <h4>Topik Kuis</h4>
+          <form id="quiz-topic-form" class="quiz-builder-form">
+            <input type="hidden" id="quiz-topic-id" />
+            <label>Judul Topik
+              <input id="quiz-topic-title-input" placeholder="Misal: Pengantar Enterprise Architecture" />
+            </label>
+            <label>Deskripsi
+              <textarea id="quiz-topic-description-input" rows="2" placeholder="Ringkas fokus kuis"></textarea>
+            </label>
+            <p id="quiz-topic-form-message" class="muted"></p>
+            <div class="form-actions">
+              <button type="submit">Simpan Topik</button>
+              <button type="button" id="quiz-topic-cancel" class="secondary-btn">Batal</button>
+            </div>
+          </form>
+          <div id="quiz-topic-list" class="quiz-builder-list"></div>
+        </section>
+
+        <section class="quiz-builder-section">
+          <h4>Soal</h4>
+          <form id="quiz-question-form" class="quiz-builder-form">
+            <input type="hidden" id="quiz-question-id" />
+            <label>Topik
+              <select id="quiz-question-topic"></select>
+            </label>
+            <label>Jenis Soal
+              <select id="quiz-question-type">
+                <option value="multiple">Pilihan Ganda</option>
+                <option value="text">Isian Singkat</option>
+              </select>
+            </label>
+            <label>Pertanyaan
+              <textarea id="quiz-question-text" rows="3" placeholder="Tulis pertanyaan"></textarea>
+            </label>
+            <div id="quiz-question-options-group" class="quiz-builder-grid">
+              <label>Opsi Jawaban (satu per baris)
+                <textarea id="quiz-question-options" rows="3" placeholder="Opsi 1&#10;Opsi 2&#10;Opsi 3"></textarea>
+              </label>
+              <label>Jawaban Benar
+                <input id="quiz-question-correct" placeholder="Nomor opsi / jawaban benar" />
+              </label>
+            </div>
+            <p id="quiz-question-form-message" class="muted"></p>
+            <div class="form-actions">
+              <button type="submit">Simpan Soal</button>
+              <button type="button" id="quiz-question-cancel" class="secondary-btn">Batal</button>
+            </div>
+          </form>
+          <div id="quiz-question-list" class="quiz-builder-list"></div>
+        </section>
+      </div>
     </aside>
 
     <section class="content">
-      <h2>Soal Quiz - Information System Lab</h2>
-      <div id="quiz-container" class="quiz-container">
+      <div class="quiz-topic-bar">
+        <div>
+          <h2 id="quiz-topic-title">Soal Quiz</h2>
+          <p id="quiz-topic-description" class="muted">Pilih topik untuk mulai menjawab.</p>
+        </div>
+        <label class="quiz-topic-selector">
+          <span>Topik</span>
+          <select id="quiz-topic-select"></select>
+        </label>
       </div>
+      <div id="quiz-container" class="quiz-container"></div>
     </section>
   </section>
 

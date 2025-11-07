@@ -125,6 +125,28 @@ export function initApp() {
   const assignmentFileClear = $('#assignment-file-clear');
   const assistantAssignmentList = $('#assistant-assignment-list');
   const assignmentCreateForm = $('#assistant-assignment-create');
+  const quizTopicSelect = $('#quiz-topic-select');
+  const quizTopicTitle = $('#quiz-topic-title');
+  const quizTopicDescription = $('#quiz-topic-description');
+  const quizBuilderCard = $('#quiz-builder');
+  const quizTopicForm = $('#quiz-topic-form');
+  const quizTopicIdInput = $('#quiz-topic-id');
+  const quizTopicTitleInput = $('#quiz-topic-title-input');
+  const quizTopicDescriptionInput = $('#quiz-topic-description-input');
+  const quizTopicFormMessage = $('#quiz-topic-form-message');
+  const quizTopicCancelBtn = $('#quiz-topic-cancel');
+  const quizTopicList = $('#quiz-topic-list');
+  const quizQuestionForm = $('#quiz-question-form');
+  const quizQuestionIdInput = $('#quiz-question-id');
+  const quizQuestionTopicSelect = $('#quiz-question-topic');
+  const quizQuestionType = $('#quiz-question-type');
+  const quizQuestionText = $('#quiz-question-text');
+  const quizQuestionOptions = $('#quiz-question-options');
+  const quizQuestionCorrect = $('#quiz-question-correct');
+  const quizQuestionFormMessage = $('#quiz-question-form-message');
+  const quizQuestionCancelBtn = $('#quiz-question-cancel');
+  const quizQuestionList = $('#quiz-question-list');
+  const quizQuestionOptionsGroup = $('#quiz-question-options-group');
 
   function revealApp() {
     if (landingPage) landingPage.style.display = 'none';
@@ -187,7 +209,15 @@ export function initApp() {
     ixd: { mode: 'move', nodes: [], wires: [] }, // nodes: {id,type,x,y,w,h,label}
     diagram: { tool: 'select', shapes: [], connectors: [], selected: null, tempConnector: null }, // draw.io-like
     erd: { mode: 'move', entities: [], relations: [], selected: null, pending: null },
-    quiz: { answers: {}, submitted: false, score: 0 }
+    quiz: {
+      topics: cloneQuizTopics(DEFAULT_QUIZ_TOPICS),
+      activeTopicId: DEFAULT_QUIZ_TOPICS[0]?.id || null,
+      answers: {},
+      submitted: false,
+      score: 0,
+      editingQuestionId: null,
+      editingTopicId: null
+    }
   };
 
   const MAX_ATTACHMENT_SIZE = 20 * 1024 * 1024; // 20MB (matches backend limit)
@@ -214,6 +244,247 @@ export function initApp() {
       return new Date(value).toLocaleString();
     } catch (err) {
       return value;
+    }
+  }
+
+  function canManageQuiz() {
+    const role = state.auth.currentUser?.role;
+    return role ? QUIZ_MANAGER_ROLES.has(role) : false;
+  }
+
+  function getQuizTopics() {
+    if (!state.quiz.topics) state.quiz.topics = [];
+    return state.quiz.topics;
+  }
+
+  function getQuizTopicById(id) {
+    return getQuizTopics().find((topic) => topic.id === id) || null;
+  }
+
+  function getActiveQuizTopic() {
+    const topics = getQuizTopics();
+    if (!topics.length) return null;
+    const current = getQuizTopicById(state.quiz.activeTopicId);
+    return current || topics[0];
+  }
+
+  function getActiveQuizQuestions() {
+    const topic = getActiveQuizTopic();
+    return topic ? topic.questions : [];
+  }
+
+  function resetQuizProgress() {
+    state.quiz.answers = {};
+    state.quiz.submitted = false;
+    state.quiz.score = 0;
+    const resultEl = $('#quiz-result');
+    if (resultEl) resultEl.style.display = 'none';
+    const submitArea = $('#quiz-submit-area');
+    if (submitArea) submitArea.style.display = 'block';
+  }
+
+  function ensureActiveQuizTopic() {
+    const active = getActiveQuizTopic();
+    state.quiz.activeTopicId = active ? active.id : null;
+  }
+
+  function setActiveQuizTopic(topicId) {
+    const selected = getQuizTopicById(topicId);
+    const fallback = getActiveQuizTopic();
+    state.quiz.activeTopicId = (selected || fallback)?.id || null;
+    resetQuizProgress();
+    initQuiz();
+    updateQuizTopicUI();
+  }
+
+  function resetQuizTopicForm() {
+    if (!quizTopicForm) return;
+    quizTopicForm.reset();
+    state.quiz.editingTopicId = null;
+    if (quizTopicIdInput) quizTopicIdInput.value = '';
+    if (quizTopicFormMessage) {
+      quizTopicFormMessage.textContent = '';
+      quizTopicFormMessage.className = 'muted';
+    }
+  }
+
+  function resetQuizQuestionForm() {
+    if (!quizQuestionForm) return;
+    quizQuestionForm.reset();
+    state.quiz.editingQuestionId = null;
+    if (quizQuestionIdInput) quizQuestionIdInput.value = '';
+    if (quizQuestionFormMessage) {
+      quizQuestionFormMessage.textContent = '';
+      quizQuestionFormMessage.className = 'muted';
+    }
+    updateQuizQuestionFormState();
+  }
+
+  function updateQuizTopicUI() {
+    ensureActiveQuizTopic();
+    const topics = getQuizTopics();
+    const active = getActiveQuizTopic();
+
+    if (quizTopicSelect) {
+      quizTopicSelect.innerHTML = topics
+        .map((topic) => `<option value="${topic.id}">${topic.title}</option>`)
+        .join('');
+      if (active) {
+        quizTopicSelect.value = active.id;
+      }
+      quizTopicSelect.disabled = topics.length <= 1;
+    }
+
+    if (quizTopicTitle) {
+      quizTopicTitle.textContent = active ? `Soal Quiz - ${active.title}` : 'Belum ada topik kuis';
+    }
+    if (quizTopicDescription) {
+      quizTopicDescription.textContent =
+        active?.description || 'Tambahkan topik kuis melalui panel pengelola asisten.';
+    }
+
+    if (quizQuestionTopicSelect) {
+      quizQuestionTopicSelect.innerHTML = topics
+        .map((topic) => `<option value="${topic.id}">${topic.title}</option>`)
+        .join('');
+      if (active) {
+        quizQuestionTopicSelect.value = active.id;
+      }
+    }
+
+    renderQuizTopicList();
+    renderQuizQuestionList();
+  }
+
+  function populateQuizTopicForm(topic) {
+    if (!quizTopicForm || !topic) return;
+    state.quiz.editingTopicId = topic.id;
+    if (quizTopicIdInput) quizTopicIdInput.value = topic.id;
+    if (quizTopicTitleInput) quizTopicTitleInput.value = topic.title || '';
+    if (quizTopicDescriptionInput) quizTopicDescriptionInput.value = topic.description || '';
+    if (quizTopicFormMessage) {
+      quizTopicFormMessage.textContent = 'Mengedit topik kuis terpilih.';
+      quizTopicFormMessage.className = 'muted';
+    }
+  }
+
+  function populateQuizQuestionForm(topicId, question) {
+    if (!quizQuestionForm || !question) return;
+    state.quiz.editingQuestionId = question.id;
+    if (quizQuestionIdInput) quizQuestionIdInput.value = question.id;
+    if (quizQuestionTopicSelect) quizQuestionTopicSelect.value = topicId;
+    if (quizQuestionType) quizQuestionType.value = question.type;
+    updateQuizQuestionFormState();
+    if (quizQuestionText) quizQuestionText.value = question.question || '';
+    if (quizQuestionOptions && question.options) {
+      quizQuestionOptions.value = question.options.join('\n');
+    } else if (quizQuestionOptions) {
+      quizQuestionOptions.value = '';
+    }
+    if (quizQuestionCorrect) {
+      if (question.type === 'multiple') {
+        quizQuestionCorrect.value =
+          typeof question.correct === 'number' && Number.isFinite(question.correct) ? question.correct + 1 : '';
+      } else {
+        const correctText = Array.isArray(question.correct) ? question.correct.join('\n') : question.correct || '';
+        quizQuestionCorrect.value = correctText;
+      }
+    }
+    if (quizQuestionFormMessage) {
+      quizQuestionFormMessage.textContent = 'Mengedit soal kuis terpilih.';
+      quizQuestionFormMessage.className = 'muted';
+    }
+  }
+
+  function updateQuizManagerVisibility() {
+    const visible = canManageQuiz();
+    if (quizBuilderCard) {
+      quizBuilderCard.style.display = visible ? 'block' : 'none';
+    }
+    if (!visible) {
+      resetQuizTopicForm();
+      resetQuizQuestionForm();
+    } else {
+      updateQuizTopicUI();
+    }
+  }
+
+  function renderQuizTopicList() {
+    if (!quizTopicList) return;
+    const topics = getQuizTopics();
+    quizTopicList.innerHTML = '';
+
+    if (!topics.length) {
+      quizTopicList.innerHTML = '<p class="muted">Belum ada topik kuis.</p>';
+      return;
+    }
+
+    topics.forEach((topic) => {
+      const row = document.createElement('div');
+      row.className = 'quiz-builder-row';
+      row.dataset.topicId = topic.id;
+      row.innerHTML = `
+        <div>
+          <strong>${escapeHtml(topic.title || 'Tanpa judul')}</strong>
+          <p class="muted">${topic.questions.length} soal • ${escapeHtml(topic.description || 'Tidak ada deskripsi')}</p>
+        </div>
+        <div class="quiz-builder-actions">
+          <button type="button" data-action="set-active-topic" class="secondary-btn small">Pilih</button>
+          <button type="button" data-action="edit-topic" class="secondary-btn small">Edit</button>
+          <button type="button" data-action="delete-topic" class="danger small">Hapus</button>
+        </div>
+      `;
+      quizTopicList.appendChild(row);
+    });
+  }
+
+  function renderQuizQuestionList() {
+    if (!quizQuestionList) return;
+    quizQuestionList.innerHTML = '';
+
+    const selectedId = quizQuestionTopicSelect?.value || state.quiz.activeTopicId;
+    const topic = selectedId ? getQuizTopicById(selectedId) : getActiveQuizTopic();
+
+    if (!topic) {
+      quizQuestionList.innerHTML = '<p class="muted">Belum ada topik kuis.</p>';
+      return;
+    }
+
+    if (!topic.questions.length) {
+      quizQuestionList.innerHTML = '<p class="muted">Belum ada soal pada topik ini.</p>';
+      return;
+    }
+
+    topic.questions.forEach((q, idx) => {
+      const row = document.createElement('div');
+      row.className = 'quiz-builder-row';
+      row.dataset.questionId = q.id;
+      row.dataset.topicId = topic.id;
+      row.innerHTML = `
+        <div>
+          <strong>${idx + 1}. ${escapeHtml(q.question || '')}</strong>
+          <p class="muted">Tipe: ${q.type === 'multiple' ? 'Pilihan Ganda' : 'Isian'}</p>
+        </div>
+        <div class="quiz-builder-actions">
+          <button type="button" data-action="edit-question" class="secondary-btn small">Edit</button>
+          <button type="button" data-action="delete-question" class="danger small">Hapus</button>
+        </div>
+      `;
+      quizQuestionList.appendChild(row);
+    });
+  }
+
+  function updateQuizQuestionFormState() {
+    if (!quizQuestionType || !quizQuestionOptionsGroup) return;
+    const isMultiple = quizQuestionType.value === 'multiple';
+    quizQuestionOptionsGroup.style.display = isMultiple ? 'grid' : 'none';
+    if (quizQuestionOptions) {
+      quizQuestionOptions.disabled = !isMultiple;
+    }
+    if (quizQuestionCorrect) {
+      quizQuestionCorrect.placeholder = isMultiple
+        ? 'Nomor opsi yang benar (mis. 1)'
+        : 'Jawaban benar (pisahkan dengan baris baru)';
     }
   }
 
@@ -1443,6 +1714,9 @@ export function initApp() {
       renderAdminUsers();
     }
 
+    updateQuizManagerVisibility();
+    updateQuizTopicUI();
+
     renderAnnouncements();
   }
 
@@ -1615,6 +1889,221 @@ export function initApp() {
       }
     }
     updateAttachmentStatus();
+  });
+
+  quizTopicSelect?.addEventListener('change', (e) => {
+    setActiveQuizTopic(e.target.value);
+  });
+
+  quizQuestionTopicSelect?.addEventListener('change', () => {
+    renderQuizQuestionList();
+  });
+
+  quizTopicForm?.addEventListener('submit', (e) => {
+    e.preventDefault();
+    if (!canManageQuiz()) {
+      toast('Hanya asisten/admin yang dapat mengelola kuis.', 'warning');
+      return;
+    }
+    const title = (quizTopicTitleInput?.value || '').trim();
+    const description = (quizTopicDescriptionInput?.value || '').trim();
+    if (!title) {
+      if (quizTopicFormMessage) {
+        quizTopicFormMessage.textContent = 'Judul topik wajib diisi.';
+        quizTopicFormMessage.className = 'form-error';
+      }
+      return;
+    }
+    const topicId = (quizTopicIdInput?.value || '').trim();
+    if (topicId) {
+      const topic = getQuizTopicById(topicId);
+      if (!topic) {
+        toast('Topik tidak ditemukan.', 'danger');
+        resetQuizTopicForm();
+        return;
+      }
+      topic.title = title;
+      topic.description = description;
+      topic.updatedAt = Date.now();
+      toast('Topik kuis diperbarui.', 'success');
+    } else {
+      const newTopic = {
+        id: `quiz-${uid()}`,
+        title,
+        description,
+        questions: [],
+        updatedAt: Date.now()
+      };
+      state.quiz.topics.push(newTopic);
+      state.quiz.activeTopicId = newTopic.id;
+      toast('Topik kuis baru ditambahkan.', 'success');
+    }
+    resetQuizTopicForm();
+    updateQuizTopicUI();
+    resetQuizProgress();
+    initQuiz();
+  });
+
+  quizTopicCancelBtn?.addEventListener('click', (e) => {
+    e.preventDefault();
+    resetQuizTopicForm();
+  });
+
+  quizTopicList?.addEventListener('click', (e) => {
+    const action = e.target.dataset.action;
+    if (!action) return;
+    const row = e.target.closest('[data-topic-id]');
+    if (!row) return;
+    const topicId = row.dataset.topicId;
+    const topic = getQuizTopicById(topicId);
+    if (!topic) return;
+
+    if (action === 'set-active-topic') {
+      setActiveQuizTopic(topic.id);
+      toast(`Topik "${topic.title}" dipilih.`, 'info');
+    } else if (action === 'edit-topic') {
+      populateQuizTopicForm(topic);
+    } else if (action === 'delete-topic') {
+      if (!canManageQuiz()) {
+        toast('Tidak memiliki akses.', 'danger');
+        return;
+      }
+      if (getQuizTopics().length <= 1) {
+        toast('Minimal harus ada satu topik kuis.', 'warning');
+        return;
+      }
+      if (!window.confirm(`Hapus topik "${topic.title}" beserta semua soalnya?`)) return;
+      state.quiz.topics = getQuizTopics().filter((t) => t.id !== topic.id);
+      if (state.quiz.activeTopicId === topic.id) {
+        state.quiz.activeTopicId = getQuizTopics()[0]?.id || null;
+        resetQuizProgress();
+      }
+      toast('Topik kuis dihapus.', 'info');
+      resetQuizTopicForm();
+      resetQuizQuestionForm();
+      updateQuizTopicUI();
+      initQuiz();
+    }
+  });
+
+  quizQuestionType?.addEventListener('change', updateQuizQuestionFormState);
+
+  quizQuestionForm?.addEventListener('submit', (e) => {
+    e.preventDefault();
+    if (!canManageQuiz()) {
+      toast('Hanya asisten/admin yang dapat mengelola kuis.', 'warning');
+      return;
+    }
+    const topicId = quizQuestionTopicSelect?.value || state.quiz.activeTopicId;
+    const topic = topicId ? getQuizTopicById(topicId) : null;
+    if (!topic) {
+      if (quizQuestionFormMessage) {
+        quizQuestionFormMessage.textContent = 'Pilih topik kuis terlebih dahulu.';
+        quizQuestionFormMessage.className = 'form-error';
+      }
+      return;
+    }
+    const type = quizQuestionType?.value || 'multiple';
+    const questionText = (quizQuestionText?.value || '').trim();
+    if (!questionText) {
+      if (quizQuestionFormMessage) {
+        quizQuestionFormMessage.textContent = 'Pertanyaan wajib diisi.';
+        quizQuestionFormMessage.className = 'form-error';
+      }
+      return;
+    }
+
+    let nextQuestion = {
+      id: state.quiz.editingQuestionId || `qq-${uid()}`,
+      type,
+      question: questionText
+    };
+
+    if (type === 'multiple') {
+      const options = (quizQuestionOptions?.value || '')
+        .split('\n')
+        .map((item) => item.trim())
+        .filter(Boolean);
+      const correctIndex = parseInt((quizQuestionCorrect?.value || '').trim(), 10) - 1;
+      if (options.length < 2) {
+        if (quizQuestionFormMessage) {
+          quizQuestionFormMessage.textContent = 'Masukkan minimal dua opsi jawaban.';
+          quizQuestionFormMessage.className = 'form-error';
+        }
+        return;
+      }
+      if (!Number.isInteger(correctIndex) || correctIndex < 0 || correctIndex >= options.length) {
+        if (quizQuestionFormMessage) {
+          quizQuestionFormMessage.textContent = 'Isi jawaban benar dengan nomor opsi yang valid.';
+          quizQuestionFormMessage.className = 'form-error';
+        }
+        return;
+      }
+      nextQuestion.options = options;
+      nextQuestion.correct = correctIndex;
+    } else {
+      const answers = (quizQuestionCorrect?.value || '')
+        .split('\n')
+        .map((item) => item.trim())
+        .filter(Boolean);
+      if (!answers.length) {
+        if (quizQuestionFormMessage) {
+          quizQuestionFormMessage.textContent = 'Masukkan minimal satu jawaban benar.';
+          quizQuestionFormMessage.className = 'form-error';
+        }
+        return;
+      }
+      nextQuestion.correct = answers.length === 1 ? answers[0] : answers;
+    }
+
+    if (state.quiz.editingQuestionId) {
+      const idx = topic.questions.findIndex((q) => q.id === state.quiz.editingQuestionId);
+      if (idx >= 0) {
+        topic.questions[idx] = nextQuestion;
+      }
+      toast('Soal kuis diperbarui.', 'success');
+    } else {
+      topic.questions.push(nextQuestion);
+      toast('Soal kuis ditambahkan.', 'success');
+    }
+    topic.updatedAt = Date.now();
+    resetQuizQuestionForm();
+    renderQuizQuestionList();
+    if (topic.id === state.quiz.activeTopicId) {
+      resetQuizProgress();
+      initQuiz();
+    }
+  });
+
+  quizQuestionCancelBtn?.addEventListener('click', (e) => {
+    e.preventDefault();
+    resetQuizQuestionForm();
+  });
+
+  quizQuestionList?.addEventListener('click', (e) => {
+    const action = e.target.dataset.action;
+    if (!action) return;
+    const row = e.target.closest('[data-question-id]');
+    if (!row) return;
+    const topicId = row.dataset.topicId;
+    const questionId = row.dataset.questionId;
+    const topic = getQuizTopicById(topicId);
+    if (!topic) return;
+    const question = topic.questions.find((q) => q.id === questionId);
+    if (!question) return;
+
+    if (action === 'edit-question') {
+      populateQuizQuestionForm(topic.id, question);
+    } else if (action === 'delete-question') {
+      if (!window.confirm('Hapus soal ini?')) return;
+      topic.questions = topic.questions.filter((q) => q.id !== question.id);
+      toast('Soal kuis dihapus.', 'info');
+      if (topic.id === state.quiz.activeTopicId) {
+        resetQuizProgress();
+        initQuiz();
+      }
+      renderQuizQuestionList();
+    }
   });
 
   adminOpenButtons.forEach((btn) => {
@@ -2049,7 +2538,10 @@ export function initApp() {
   clearGradeForm();
   refreshAnnouncements();
   renderAdminUsers();
-  
+  updateQuizTopicUI();
+  updateQuizManagerVisibility();
+  updateQuizQuestionFormState();
+
   // Restore session from localStorage (for Google OAuth)
   const savedToken = localStorage.getItem('isl-token');
   const savedUser = localStorage.getItem('isl-user');
@@ -3491,13 +3983,55 @@ export function initApp() {
     }
   ];
 
+  const DEFAULT_QUIZ_TOPICS = [
+    {
+      id: 'quiz-isl-basics',
+      title: 'Dasar Information System Lab',
+      description: 'Pertanyaan pengantar seputar modul dan aktivitas utama di ISL.',
+      updatedAt: Date.now(),
+      questions: quizQuestions.map((q) => ({
+        ...q,
+        options: q.options ? [...q.options] : undefined,
+        correct: Array.isArray(q.correct) ? [...q.correct] : q.correct
+      }))
+    }
+  ];
+
+  const QUIZ_MANAGER_ROLES = new Set(['assistant', 'admin']);
+
+  function cloneQuizTopics(source) {
+    return source.map((topic) => ({
+      ...topic,
+      questions: topic.questions.map((q) => ({
+        ...q,
+        options: q.options ? [...q.options] : undefined,
+        correct: Array.isArray(q.correct) ? [...q.correct] : q.correct
+      }))
+    }));
+  }
+
   function initQuiz() {
     const container = $('#quiz-container');
     if (!container) return;
 
+    const topic = getActiveQuizTopic();
+    const questions = topic ? topic.questions : [];
     container.innerHTML = '';
 
-    quizQuestions.forEach((q, idx) => {
+    if (!topic) {
+      container.innerHTML =
+        '<p class="muted">Belum ada topik kuis. Asisten dapat menambahkan topik melalui panel pengelola.</p>';
+      updateQuizStats();
+      return;
+    }
+
+    if (!questions.length) {
+      container.innerHTML = '<p class="muted">Topik ini belum memiliki soal. Tambahkan lewat panel asisten.</p>';
+      updateQuizStats();
+      return;
+    }
+
+    questions.forEach((q, idx) => {
       const qDiv = document.createElement('div');
       qDiv.className = 'quiz-question';
       qDiv.dataset.id = q.id;
@@ -3558,10 +4092,12 @@ export function initApp() {
   }
 
   function updateQuizStats() {
-    const total = quizQuestions.length;
-    const answered = Object.keys(state.quiz.answers).filter(
-      (k) => state.quiz.answers[k] !== undefined && state.quiz.answers[k] !== ''
-    ).length;
+    const questions = getActiveQuizQuestions();
+    const total = questions.length;
+    const answered = questions.filter((q) => {
+      const value = state.quiz.answers[q.id];
+      return value !== undefined && value !== '';
+    }).length;
 
     const totalEl = $('#quiz-total');
     const answeredEl = $('#quiz-answered');
@@ -3572,9 +4108,15 @@ export function initApp() {
   $('#quiz-submit')?.addEventListener('click', () => {
     if (state.quiz.submitted) return;
 
+    const questions = getActiveQuizQuestions();
+    if (!questions.length) {
+      toast('Belum ada soal pada topik ini.', 'warning');
+      return;
+    }
+
     let correct = 0;
 
-    quizQuestions.forEach((q) => {
+    questions.forEach((q) => {
       const userAnswer = state.quiz.answers[q.id];
       const qDiv = $(`.quiz-question[data-id="${q.id}"]`);
       const answerDiv = qDiv?.querySelector('.quiz-correct-answer');
@@ -3620,7 +4162,7 @@ export function initApp() {
       qDiv?.classList.add('show-answer');
     });
 
-    const score = Math.round((correct / quizQuestions.length) * 100);
+    const score = questions.length ? Math.round((correct / questions.length) * 100) : 0;
     state.quiz.score = score;
     state.quiz.submitted = true;
 
@@ -3644,9 +4186,7 @@ export function initApp() {
   });
 
   $('#quiz-retry')?.addEventListener('click', () => {
-    state.quiz.answers = {};
-    state.quiz.submitted = false;
-    state.quiz.score = 0;
+    resetQuizProgress();
 
     const resultEl = $('#quiz-result');
     if (resultEl) resultEl.style.display = 'none';
@@ -4107,6 +4647,17 @@ export function initApp() {
     state.assignments.editingDraft = null;
     if (assignmentFileInput) assignmentFileInput.value = '';
 
+    if (Array.isArray(data.quiz?.topics) && data.quiz.topics.length) {
+      state.quiz.topics = cloneQuizTopics(data.quiz.topics);
+      state.quiz.activeTopicId = data.quiz.activeTopicId || state.quiz.topics[0]?.id || null;
+    } else {
+      state.quiz.topics = cloneQuizTopics(DEFAULT_QUIZ_TOPICS);
+      state.quiz.activeTopicId = DEFAULT_QUIZ_TOPICS[0]?.id || null;
+    }
+    resetQuizProgress();
+    state.quiz.editingQuestionId = null;
+    state.quiz.editingTopicId = null;
+
     if (data.auth?.currentUser) {
       const restored =
         USERS.find((user) => user.id === data.auth.currentUser.id) ||
@@ -4121,6 +4672,8 @@ export function initApp() {
     redrawIXD();
     drawDiagram();
     drawERD();
+    updateQuizTopicUI();
+    updateQuizManagerVisibility();
     initQuiz();
     ensureAssignmentOptions();
     updateAuthUI();
@@ -4148,30 +4701,36 @@ export function initApp() {
     state.erd.entities = [];
     state.erd.relations = [];
     state.erd.selected = null;
-      state.erd.pending = null;
-      state.quiz.answers = {};
-      state.quiz.submitted = false;
-      state.quiz.score = 0;
-      state.assignments.submissions = [];
-      state.assignments.selectedSubmissionId = null;
-      state.assignments.pendingAttachment = null;
-      state.assignments.removeAttachment = false;
-      state.assignments.attachmentLoading = false;
-      state.assignments.editingId = null;
-      state.assignments.editingDraft = null;
-      if (assignmentFileInput) assignmentFileInput.value = '';
-      state.auth.currentUser = null;
-      drawReq();
-      drawEA();
-      redrawIXD();
-      drawDiagram();
-      drawERD();
-      initQuiz();
-      ensureAssignmentOptions();
-      updateAuthUI();
-      updateAttachmentStatus();
-      showLanding();
-    });
+    state.erd.pending = null;
+    state.quiz.topics = cloneQuizTopics(DEFAULT_QUIZ_TOPICS);
+    state.quiz.activeTopicId = DEFAULT_QUIZ_TOPICS[0]?.id || null;
+    state.quiz.answers = {};
+    state.quiz.submitted = false;
+    state.quiz.score = 0;
+    state.quiz.editingQuestionId = null;
+    state.quiz.editingTopicId = null;
+    state.assignments.submissions = [];
+    state.assignments.selectedSubmissionId = null;
+    state.assignments.pendingAttachment = null;
+    state.assignments.removeAttachment = false;
+    state.assignments.attachmentLoading = false;
+    state.assignments.editingId = null;
+    state.assignments.editingDraft = null;
+    if (assignmentFileInput) assignmentFileInput.value = '';
+    state.auth.currentUser = null;
+    drawReq();
+    drawEA();
+    redrawIXD();
+    drawDiagram();
+    drawERD();
+    updateQuizTopicUI();
+    updateQuizManagerVisibility();
+    initQuiz();
+    ensureAssignmentOptions();
+    updateAuthUI();
+    updateAttachmentStatus();
+    showLanding();
+  });
 
   // ====== Utils ======
   function downloadBlob(blob, filename) {
