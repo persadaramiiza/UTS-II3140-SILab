@@ -110,35 +110,7 @@ function buildDefaultData() {
         authProvider: 'local'
       }
     ],
-    assignments: [
-      {
-        id: 'asg-req',
-        title: 'Analisis Requirement',
-        description:
-          'Susun minimal tiga user story beserta acceptance criteria untuk modul Sistem Informasi pilihan Anda.',
-        focus: 'Requirements',
-        createdAt: now,
-        updatedAt: now
-      },
-      {
-        id: 'asg-ea',
-        title: 'Value Stream Mapping',
-        description:
-          'Pemetaan value stream dan capability yang relevan untuk organisasi fiktif yang Anda rancang.',
-        focus: 'Enterprise Architecture',
-        createdAt: now,
-        updatedAt: now
-      },
-      {
-        id: 'asg-proto',
-        title: 'Prototype Wireframe',
-        description:
-          'Bangun wireframe interaktif dan jelaskan alur interaksi utama pada canvas prototyping.',
-        focus: 'Interaction Design',
-        createdAt: now,
-        updatedAt: now
-      }
-    ],
+    assignments: [],
     submissions: [],
     announcements: [],
     quizTopics: buildDefaultQuizTopics(now)
@@ -361,7 +333,7 @@ async function ensureSupabaseDefaults() {
     .select('id', { count: 'exact', head: true });
   handleSupabaseError('assignments.count', assignmentsHeadError);
 
-  if (!assignmentsCount || assignmentsCount === 0) {
+  if ((!assignmentsCount || assignmentsCount === 0) && defaults.assignments.length > 0) {
     const { error: insertAssignmentsError } = await supabase
       .from('assignments')
       .upsert(defaults.assignments.map(toAssignmentRow), { onConflict: 'id' });
