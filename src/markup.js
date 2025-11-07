@@ -538,7 +538,39 @@
     </section>
   </section>
 
-  <section id="tab-diagram" role="tabpanel" class="tab-panel">
+  
+<section id="tab-diagram" role="tabpanel" class="tab-panel">
+    <section class="content">
+      <h2>Canvas Diagram</h2>
+      <div class="diagram-canvas-wrapper">
+        <svg id="diagram-canvas" class="diagram-canvas" width="1200" height="700" role="region" aria-label="Diagram Canvas">
+          <defs>
+            <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+              <polygon points="0 0, 10 3.5, 0 7" fill="#86c5ff"/>
+            </marker>
+          </defs>
+        </svg>
+        <div class="diagram-overlay" aria-hidden="true">
+          <button id="diagram-undo" class="ghost">Undo</button>
+          <button id="diagram-redo" class="ghost">Redo</button>
+          <button id="diagram-clear" class="ghost danger">Clear</button>
+        </div>
+      </div>
+      <div class="diagram-inspector">
+        <div>
+          <h3>Layer & History</h3>
+          <div id="diagram-history" class="history"></div>
+        </div>
+        <div>
+          <h3>Snap Settings</h3>
+          <label class="check-inline"><input type="checkbox" id="diagram-snap" checked> Snap to grid</label>
+          <label>Grid size
+            <input type="number" id="diagram-grid" value="20" min="5" max="60" />
+          </label>
+        </div>
+      </div>
+    </section>
+
     <aside class="side">
       <h2>Diagram Tools</h2>
       <div class="card">
@@ -570,7 +602,7 @@
           </button>
         </div>
       </div>
-      
+
       <div class="card">
         <h3>Tools</h3>
         <div class="tool-buttons">
@@ -639,65 +671,25 @@
           </div>
         </div>
       </div>
-
-      <div class="card">
-        <h3>Actions</h3>
-        <div class="row wrap">
-          <button id="diagram-export-svg">Export SVG</button>
-          <button id="diagram-export-png">Export PNG</button>
-          <button id="diagram-clear" class="danger">Clear All</button>
-        </div>
-      </div>
-
-      <div class="card tips">
-        <h3>Tips</h3>
-        <ul style="font-size:13px; line-height:1.6">
-          <li>Klik shape untuk tambahkan ke canvas</li>
-          <li>Drag untuk memindahkan</li>
-          <li>Connector: klik dua shape secara berurutan</li>
-          <li>Delete: pilih shape lalu tekan Del</li>
-        </ul>
-      </div>
     </aside>
-
-    <section class="content">
-      <h2>Diagram Canvas</h2>
-            <div class="diagram-help">
-        <div class="help-item">
-          <strong>Tips Cepat:</strong>
-          <span>Gunakan tool Select, klik shape, lalu drag handle biru untuk mengubah ukuran</span>
-        </div>
-        <div class="help-item">
-          <strong>Edit Teks:</strong>
-          <span>Double-click shape untuk mengubah label</span>
-        </div>
-        <div class="help-item">
-          <strong>Hubungkan Bentuk:</strong>
-          <span>Pilih tool Connector lalu klik dua shape untuk membuat garis hubungan</span>
-        </div>
-      </div>
-        <div class="help-item">
-          <strong>✏️ Edit Text:</strong>
-          <span>Double-click any shape to edit text</span>
-        </div>
-        <div class="help-item">
-          <strong>🔗 Connect:</strong>
-          <span>Use connector tool to link shapes</span>
-        </div>
-      </div>
-      <div class="diagram-canvas-wrapper">
-        <svg id="diagram-canvas" class="diagram-canvas" width="100%" height="600">
-          <defs>
-            <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
-              <polygon points="0 0, 10 3.5, 0 7" fill="#86c5ff"/>
-            </marker>
-          </defs>
-        </svg>
-      </div>
-    </section>
   </section>
 
+
   <section id="tab-quiz" role="tabpanel" class="tab-panel">
+    <section class="content">
+      <div class="quiz-topic-bar">
+        <div>
+          <h2 id="quiz-topic-title">Soal Quiz</h2>
+          <p id="quiz-topic-description" class="muted">Pilih topik untuk mulai menjawab.</p>
+        </div>
+        <label class="quiz-topic-selector">
+          <span>Topik</span>
+          <select id="quiz-topic-select"></select>
+        </label>
+      </div>
+      <div id="quiz-container" class="quiz-container"></div>
+    </section>
+
     <aside class="side">
       <h2>Quiz ISL</h2>
       <div class="card">
@@ -791,23 +783,34 @@
         </section>
       </div>
     </aside>
-
-    <section class="content">
-      <div class="quiz-topic-bar">
-        <div>
-          <h2 id="quiz-topic-title">Soal Quiz</h2>
-          <p id="quiz-topic-description" class="muted">Pilih topik untuk mulai menjawab.</p>
-        </div>
-        <label class="quiz-topic-selector">
-          <span>Topik</span>
-          <select id="quiz-topic-select"></select>
-        </label>
-      </div>
-      <div id="quiz-container" class="quiz-container"></div>
-    </section>
   </section>
 
   <section id="tab-erd" role="tabpanel" class="tab-panel">
+    <section class="content erd-wrap">
+      <svg id="erd-wires" aria-hidden="true"></svg>
+      <section id="erd-board" class="board erd-board" aria-label="Kanvas ERD"></section>
+      <aside class="log erd-log">
+        <h3>Relasi & Mode</h3>
+        <p id="erd-info" class="muted">Tambahkan entitas untuk mulai pemodelan konseptual.</p>
+        <div class="card compact">
+          <label>Mode
+            <select id="erd-mode">
+              <option value="move">Move Entity</option>
+              <option value="relate">Create Relation</option>
+            </select>
+          </label>
+          <div class="row wrap">
+            <button id="erd-export-json">Export JSON</button>
+            <button id="erd-reset" class="danger">Reset ERD</button>
+          </div>
+        </div>
+        <div class="card">
+          <h4>Daftar Relasi</h4>
+          <div id="erd-rel-list" class="mini-list"></div>
+        </div>
+      </aside>
+    </section>
+
     <aside class="side">
       <h2>Conceptual Modeling</h2>
       <form id="erd-entity-form" class="card">
@@ -840,31 +843,6 @@
         <div id="erd-attr-list" class="attr-panel"></div>
       </section>
     </aside>
-
-    <section class="content erd-wrap">
-      <svg id="erd-wires" aria-hidden="true"></svg>
-      <section id="erd-board" class="board erd-board" aria-label="Kanvas ERD"></section>
-      <aside class="log erd-log">
-        <h3>Relasi & Mode</h3>
-        <p id="erd-info" class="muted">Tambahkan entitas untuk mulai pemodelan konseptual.</p>
-        <div class="card compact">
-          <label>Mode
-            <select id="erd-mode">
-              <option value="move">Move Entity</option>
-              <option value="relate">Create Relation</option>
-            </select>
-          </label>
-          <div class="row wrap">
-            <button id="erd-export-json">Export JSON</button>
-            <button id="erd-reset" class="danger">Reset ERD</button>
-          </div>
-        </div>
-        <div class="card">
-          <h4>Daftar Relasi</h4>
-          <div id="erd-rel-list" class="mini-list"></div>
-        </div>
-      </aside>
-    </section>
   </section>
 
   <section id="tab-assignments" role="tabpanel" class="tab-panel">
@@ -1123,5 +1101,3 @@
 </footer>
 </div>
 `;
-
-
