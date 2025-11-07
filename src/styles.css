@@ -1359,10 +1359,20 @@ footer{padding:16px; text-align:center; color:var(--muted); font-size:14px}
   border:1px solid #3a4278; border-radius:12px;
   padding:14px; min-width:170px; max-width:240px;
   box-shadow:var(--shadow-lg); transition:all 0.2s ease; z-index:10;
+  cursor:grab;
 }
 .entity-card:hover{box-shadow:0 12px 32px rgba(4,7,22,.6); border-color:#4a5288}
 .entity-card.selected{outline:2px solid var(--ring); outline-offset:2px}
 .entity-card.pending{outline:2px dashed var(--accent); outline-offset:2px; animation:pulse 1.5s infinite}
+.entity-card.dragging{
+  transition:none;
+  cursor:grabbing;
+  box-shadow:0 16px 40px rgba(0,0,0,0.55);
+  z-index:30;
+}
+.entity-card.dragging header{
+  cursor:grabbing;
+}
 @keyframes pulse{0%,100%{opacity:1} 50%{opacity:0.7}}
 .entity-card header{
   font-weight:700; margin-bottom:10px; cursor:text;

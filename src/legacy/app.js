@@ -3659,6 +3659,15 @@ export function initApp() {
   // ====== ERD: Data Modeling ======
   const erdBoard = $('#erd-board');
   const erdWires = $('#erd-wires');
+  let erdRedrawRaf = null;
+
+  function scheduleErdRedraw() {
+    if (erdRedrawRaf) return;
+    erdRedrawRaf = requestAnimationFrame(() => {
+      erdRedrawRaf = null;
+      redrawERD();
+    });
+  }
 
   erdBoard?.addEventListener('click', (e) => {
     if (e.target !== erdBoard) return;
@@ -3803,9 +3812,10 @@ export function initApp() {
   }
 
   function bindEntityCard(card, ent) {
-    let dragging = false,
-      dx = 0,
-      dy = 0;
+    let dragging = false;
+    let dx = 0;
+    let dy = 0;
+    let boardBounds = null;
     card.addEventListener('pointerdown', (e) => {
       if (e.target.tagName === 'HEADER' && state.erd.mode !== 'move') return;
       if (state.erd.mode === 'move') {
@@ -3813,22 +3823,30 @@ export function initApp() {
         card.setPointerCapture(e.pointerId);
         dx = e.clientX - card.offsetLeft;
         dy = e.clientY - card.offsetTop;
+        boardBounds = erdBoard.getBoundingClientRect();
+        card.classList.add('dragging');
       }
     });
     card.addEventListener('pointermove', (e) => {
       if (!dragging) return;
-      const bounds = erdBoard.getBoundingClientRect();
-      const nx = Math.max(0, Math.min(bounds.width - card.offsetWidth, e.clientX - dx));
-      const ny = Math.max(0, Math.min(bounds.height - card.offsetHeight, e.clientY - dy));
+      if (!boardBounds) boardBounds = erdBoard.getBoundingClientRect();
+      const nx = Math.max(0, Math.min(boardBounds.width - card.offsetWidth, e.clientX - dx));
+      const ny = Math.max(0, Math.min(boardBounds.height - card.offsetHeight, e.clientY - dy));
       card.style.left = nx + 'px';
       card.style.top = ny + 'px';
       ent.x = nx;
       ent.y = ny;
-      redrawERD();
+      scheduleErdRedraw();
     });
-    card.addEventListener('pointerup', () => {
+    const stopDragging = () => {
+      if (!dragging) return;
       dragging = false;
-    });
+      boardBounds = null;
+      card.classList.remove('dragging');
+      scheduleErdRedraw();
+    };
+    card.addEventListener('pointerup', stopDragging);
+    card.addEventListener('pointercancel', stopDragging);
     card.addEventListener('click', (e) => {
       e.stopPropagation();
       if (state.erd.mode === 'relate') {
