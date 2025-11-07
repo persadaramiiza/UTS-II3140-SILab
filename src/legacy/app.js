@@ -2908,7 +2908,7 @@ export function initApp() {
       <header>
         <span class="badge">${it.actor || 'Actor'}</span>
         <div style="display:flex; gap:6px">
-          <button class="del danger" title="Delete">Ã—</button>
+          <button class="del danger" title="Delete">&times;</button>
         </div>
       </header>
       <div contenteditable="true" class="title">${it.title}</div>
@@ -2956,7 +2956,7 @@ export function initApp() {
     downloadBlob(new Blob([csv], { type: 'text/csv' }), 'requirements.csv');
   });
 
-  // ====== EA: Value Stream Ã— Capability ======
+  // ====== EA: Value Stream × Capability ======
   $('#add-vs')?.addEventListener('click', () => {
     const name = ($('#vs-name').value || '').trim();
     if (!name) return;
@@ -3465,6 +3465,7 @@ export function initApp() {
       line.setAttribute('x2', x2);
       line.setAttribute('y2', y2);
       line.classList.add('diagram-connector');
+      line.setAttribute('marker-end', 'url(#arrowhead)');
       line.dataset.id = conn.id;
       line.addEventListener('click', () => {
         if (state.diagram.tool === 'delete') {
@@ -4597,8 +4598,10 @@ export function initApp() {
       const row = document.createElement('div');
       row.className = 'rel-row';
       row.innerHTML = `
-      <span><b>${a.name}</b> (${rel.cardA}) â€” <em>${rel.name}</em> â€” (${rel.cardB}) <b>${b.name}</b></span>
-      <button class="danger">Ã—</button>
+      <span><b>${escapeHtml(a.name)}</b> (${escapeHtml(String(rel.cardA ?? ''))}) &mdash; <em>${escapeHtml(
+        rel.name || ''
+      )}</em> &mdash; (${escapeHtml(String(rel.cardB ?? ''))}) <b>${escapeHtml(b.name)}</b></span>
+      <button class="danger">A&times;</button>
     `;
       row.querySelector('button').onclick = () => {
         state.erd.relations = state.erd.relations.filter((r) => r.id !== rel.id);
