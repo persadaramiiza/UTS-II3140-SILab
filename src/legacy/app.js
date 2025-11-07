@@ -254,6 +254,7 @@ export function initApp() {
   const landingPage = $('#landing-page');
   const mainApp = $('#main-app');
   const authModal = $('#auth-modal');
+  const prefersReducedMotionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
   const loginForm = $('#login-form');
   const loginError = $('#login-error');
   const loginUsername = $('#login-username');
@@ -336,6 +337,8 @@ export function initApp() {
     if (landingPage) landingPage.style.display = 'none';
     if (mainApp) mainApp.style.display = 'block';
     document.body.style.overflow = 'auto';
+    const activeTab = document.querySelector('.tab.active')?.dataset.tab || 'req';
+    scrollActiveTabIntoView(activeTab);
   }
 
   function hideLogin() {
@@ -970,7 +973,7 @@ export function initApp() {
       <header class="admin-user-header">
         <div>
           <h4>${escapeHtml(user.name || user.username)}</h4>
-          <p class="muted">@${escapeHtml(user.username)}${user.email ? ` â€¢ ${escapeHtml(user.email)}` : ''}</p>
+          <p class="muted">@${escapeHtml(user.username)}${user.email ? ` • ${escapeHtml(user.email)}` : ''}</p>
         </div>
         <span class="badge badge-role-${escapeHtml(user.role)}">${escapeHtml(roleLabel)}</span>
       </header>
@@ -1298,7 +1301,7 @@ export function initApp() {
     card.innerHTML = `
       <header>
         <h4>${escapeHtml(item.title)}</h4>
-        <span class="announcement-meta">${formatTimestamp(item.createdAt)} â€¢ ${escapeHtml(item.createdByName || 'Pengumuman')}</span>
+        <span class="announcement-meta">${formatTimestamp(item.createdAt)} • ${escapeHtml(item.createdByName || 'Pengumuman')}</span>
       </header>
       <p>${escapeHtml(item.content)}</p>
     `;
@@ -1725,7 +1728,7 @@ export function initApp() {
             ? `Sudah dinilai ${submission.grade.score}/100 oleh ${submission.grade.graderName}`
             : 'Menunggu penilaian asisten';
           const timestamp = formatTimestamp(submission.submittedAt);
-          if (timestamp) statusText += ` â€¢ ${timestamp}`;
+          if (timestamp) statusText += ` • ${timestamp}`;
         }
         const status = document.createElement('p');
         status.className = 'assignment-status';
@@ -1788,7 +1791,7 @@ export function initApp() {
         const status = document.createElement('p');
         status.className = 'submission-meta';
         status.textContent = submission.grade
-          ? `Nilai ${submission.grade.score}/100 â€¢ ${submission.grade.graderName}`
+          ? `Nilai ${submission.grade.score}/100 • ${submission.grade.graderName}`
           : 'Menunggu penilaian.';
         card.appendChild(status);
 
@@ -1834,7 +1837,7 @@ export function initApp() {
       const assignment = getAssignmentMeta(submission.assignmentId);
 
       const title = document.createElement('h4');
-      title.textContent = `${submission.studentName || submission.studentId} â€¢ ${
+      title.textContent = `${submission.studentName || submission.studentId} • ${
         assignment ? assignment.title : submission.assignmentId
       }`;
       card.appendChild(title);
@@ -2869,12 +2872,28 @@ export function initApp() {
   }
 
   // ====== Tabs ======
+  function scrollActiveTabIntoView(tabId) {
+    const panel = document.getElementById(`tab-${tabId}`);
+    if (!panel) return;
+    requestAnimationFrame(() => {
+      const header = document.querySelector('.app-header');
+      const headerOffset = header ? header.getBoundingClientRect().height : 0;
+      const panelTop = panel.getBoundingClientRect().top;
+      const targetTop = window.scrollY + panelTop - Math.max(0, headerOffset - 8);
+      window.scrollTo({
+        top: Math.max(0, targetTop),
+        behavior: prefersReducedMotionQuery.matches ? 'auto' : 'smooth'
+      });
+    });
+  }
+
   $$('.tab').forEach((t) =>
     t.addEventListener('click', () => {
       $$('.tab').forEach((x) => x.classList.remove('active'));
       t.classList.add('active');
       $$('.tab-panel').forEach((p) => p.classList.remove('active'));
       $('#tab-' + t.dataset.tab).classList.add('active');
+      scrollActiveTabIntoView(t.dataset.tab);
     })
   );
 
@@ -3995,7 +4014,7 @@ export function initApp() {
         if (rotationInput) {
           rotationInput.value = shape.rotation || 0;
           const valueSpan = $('#rotation-value');
-          if (valueSpan) valueSpan.textContent = (shape.rotation || 0) + 'Â°';
+          if (valueSpan) valueSpan.textContent = (shape.rotation || 0) + '°';
         }
         if (widthInput) widthInput.value = shape.w;
         if (heightInput) heightInput.value = shape.h;
@@ -4039,7 +4058,7 @@ export function initApp() {
           } else if (id === 'shape-rotation') {
             shape.rotation = value;
             const valueSpan = $('#rotation-value');
-            if (valueSpan) valueSpan.textContent = value + 'Â°';
+            if (valueSpan) valueSpan.textContent = value + '°';
           }
           drawDiagram();
         }
@@ -4419,7 +4438,7 @@ export function initApp() {
           .map(
             (attr) => `
         <li>
-          <span>${attr.pk ? 'ðŸ”‘ ' : ''}${attr.name}<small>${attr.type}</small></span>
+          <span>${attr.pk ? '🔑 ' : ''}${attr.name}<small>${attr.type}</small></span>
         </li>
       `
           )
@@ -4504,7 +4523,7 @@ export function initApp() {
       drawERD();
       return;
     }
-    const name = window.prompt(`Nama relasi ${a.name} â†” ${b.name}?`, `${a.name}_${b.name}`);
+    const name = window.prompt(`Nama relasi ${a.name} ↔ ${b.name}?`, `${a.name}_${b.name}`);
     if (name === null) {
       state.erd.pending = null;
       drawERD();
@@ -4548,7 +4567,7 @@ export function initApp() {
       const row = document.createElement('div');
       row.className = 'attr-row';
       row.innerHTML = `
-      <span>${attr.pk ? 'ðŸ”‘ ' : ''}${attr.name} <small>${attr.type}</small></span>
+      <span>${attr.pk ? '🔑 ' : ''}${attr.name} <small>${attr.type}</small></span>
       <div class="actions">
         <button type='button' data-action="toggle">${attr.pk ? 'PK' : 'Set PK'}</button>
         <button type='button' data-action="delete" class="danger">Hapus</button>
@@ -4916,11 +4935,6 @@ export function initApp() {
   cachedState = state;
   return state;
 }
-
-
-
-
-
 
 
 

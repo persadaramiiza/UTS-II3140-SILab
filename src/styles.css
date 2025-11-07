@@ -1053,8 +1053,21 @@ input:hover, textarea:hover, select:hover{
 main{display:block; padding:var(--space); max-width:1800px; margin:0 auto}
 .tab-panel{display:none}
 .tab-panel.active{
-  display:grid; grid-template-columns:320px 1fr; gap:var(--space);
-  min-height:calc(100vh - 160px); animation:fadeIn 0.3s ease;
+  display:grid; 
+  grid-template-columns:320px 1fr; 
+  grid-template-areas:"side content";
+  gap:var(--space);
+  align-items:flex-start;
+  min-height:calc(100vh - 160px); 
+  animation:fadeIn 0.3s ease;
+}
+.tab-panel > .side{grid-area:side;}
+.tab-panel > .content{grid-area:content;}
+
+#tab-quiz.tab-panel.active,
+#tab-erd.tab-panel.active{
+  grid-template-columns:minmax(0,1fr) 320px;
+  grid-template-areas:"content side";
 }
 @keyframes fadeIn{from{opacity:0; transform:translateY(8px)} to{opacity:1; transform:translateY(0)}}
 .side{
@@ -1080,6 +1093,12 @@ main{display:block; padding:var(--space); max-width:1800px; margin:0 auto}
   overflow:auto; 
   box-shadow:var(--shadow-md);
   transition:all var(--transition-base);
+}
+
+#tab-quiz .content,
+#tab-erd .content{
+  overflow:visible;
+  max-height:none;
 }
 
 .content:hover{
@@ -3034,7 +3053,12 @@ label input, label textarea, label select{margin-top:6px; width:100%}
 .file-actions button{flex:0 0 auto}
 
 @media (max-width: 980px){
-  .tab-panel.active{grid-template-columns:1fr}
+  .tab-panel.active{
+    grid-template-columns:1fr;
+    grid-template-areas:
+      "content"
+      "side";
+  }
   .moscow{grid-template-columns:1fr 1fr}
   .ixd-wrap{grid-template-columns:1fr}
   .erd-wrap{grid-template-columns:1fr}
