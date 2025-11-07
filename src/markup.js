@@ -183,9 +183,9 @@
 
     <section class="hero">
       <div class="hero-content">
-        <span class="hero-badge">ðŸŽ“ Information Systems Laboratory</span>
+        <span class="hero-badge">📘 Information Systems Laboratory</span>
         <h1 class="hero-title">Platform Penelitian Sistem Informasi</h1>
-        <p class="hero-subtitle">Kumpulan alat penelitian terintegrasi untuk Requirements Engineering, Enterprise Architecture, Interaction Design, dan Conceptual Modeling â€” semua dalam satu workspace.</p>
+        <p class="hero-subtitle">Kumpulan alat penelitian terintegrasi untuk Requirements Engineering, Enterprise Architecture, Interaction Design, dan Conceptual Modeling — semua dalam satu workspace.</p>
        <div class="hero-cta">
          <button id="getStarted" class="cta-btn large" type="button"><span>Mulai Sekarang</span></button>
          <button id="learnMore" class="secondary-btn large" type="button">Jelajahi Modul</button>
@@ -208,19 +208,19 @@
       </div>
       <div class="hero-visual">
         <div class="floating-card card-1">
-          <span class="card-icon">ðŸ“‹</span>
+          <span class="card-icon">📋</span>
           <span class="card-text">Requirements</span>
         </div>
         <div class="floating-card card-2">
-          <span class="card-icon">ðŸ—ï¸</span>
+          <span class="card-icon">🏛️</span>
           <span class="card-text">Architecture</span>
         </div>
         <div class="floating-card card-3">
-          <span class="card-icon">ðŸŽ¨</span>
+          <span class="card-icon">🎨</span>
           <span class="card-text">Design</span>
         </div>
         <div class="floating-card card-4">
-          <span class="card-icon">ðŸ“Š</span>
+          <span class="card-icon">📊</span>
           <span class="card-text">Data Modeling</span>
         </div>
       </div>
@@ -233,68 +233,68 @@
       </div>
       <div class="features-grid">
         <div class="feature-card">
-          <span class="feature-icon">ðŸ“</span>
+        <span class="feature-icon">📝</span>
           <h3>Requirements Engineering</h3>
           <p>Kelola user stories dengan MoSCoW prioritization. Drag & drop interface yang intuitif untuk mengorganisir requirements Anda.</p>
           <ul class="feature-list">
-            <li>âœ“ Board interaktif drag & drop</li>
-            <li>âœ“ Acceptance criteria template</li>
-            <li>âœ“ Export ke CSV</li>
+            <li>✓ Board interaktif drag & drop</li>
+            <li>✓ Acceptance criteria template</li>
+            <li>✓ Export ke CSV</li>
           </ul>
         </div>
         
         <div class="feature-card">
-          <span class="feature-icon">ðŸ¢</span>
+        <span class="feature-icon">🏗️</span>
           <h3>Enterprise Architecture</h3>
           <p>Mapping value stream dengan business capabilities. Visual heat indicator untuk analisis prioritas strategis.</p>
           <ul class="feature-list">
-            <li>âœ“ Value stream mapping</li>
-            <li>âœ“ Capability heat analysis</li>
-            <li>âœ“ Stakeholder management</li>
+            <li>✓ Value stream mapping</li>
+            <li>✓ Capability heat analysis</li>
+            <li>✓ Stakeholder management</li>
           </ul>
         </div>
 
         <div class="feature-card">
-          <span class="feature-icon">âœï¸</span>
+          <span class="feature-icon">✏️</span>
           <h3>Interaction Design</h3>
           <p>Buat wireframe dan prototype interaktif. Event logging untuk usability testing dan evaluasi design.</p>
           <ul class="feature-list">
-            <li>âœ“ Wireframe builder</li>
-            <li>âœ“ Component library</li>
-            <li>âœ“ Event log tracking</li>
+            <li>✓ Wireframe builder</li>
+            <li>✓ Component library</li>
+            <li>✓ Event log tracking</li>
           </ul>
         </div>
 
         <div class="feature-card">
-          <span class="feature-icon">ðŸŽ¯</span>
+        <span class="feature-icon">🎯</span>
           <h3>Diagram Builder</h3>
           <p>Tools profesional untuk membuat diagram flowchart, UML, dan diagram teknis lainnya dengan mudah.</p>
           <ul class="feature-list">
-            <li>âœ“ Multiple shape library</li>
-            <li>âœ“ Smart connectors</li>
-            <li>âœ“ Export SVG/PNG</li>
+            <li>✓ Multiple shape library</li>
+            <li>✓ Smart connectors</li>
+            <li>✓ Export SVG/PNG</li>
           </ul>
         </div>
 
         <div class="feature-card">
-          <span class="feature-icon">ðŸ—„ï¸</span>
+        <span class="feature-icon">🧱</span>
           <h3>Conceptual Modeling</h3>
           <p>ERD editor dengan relationship cardinality. Visualisasi struktur database yang jelas dan profesional.</p>
           <ul class="feature-list">
-            <li>âœ“ Entity management</li>
-            <li>âœ“ Relationship mapping</li>
-            <li>âœ“ JSON export</li>
+            <li>✓ Entity management</li>
+            <li>✓ Relationship mapping</li>
+            <li>✓ JSON export</li>
           </ul>
         </div>
 
         <div class="feature-card">
-          <span class="feature-icon">ðŸ“š</span>
+        <span class="feature-icon">📘</span>
           <h3>Quiz & Assessment</h3>
           <p>Bank soal terintegrasi dengan auto-grading. Perfect untuk evaluasi pembelajaran dan research validation.</p>
           <ul class="feature-list">
-            <li>âœ“ Multiple question types</li>
-            <li>âœ“ Instant feedback</li>
-            <li>âœ“ Score tracking</li>
+            <li>✓ Multiple question types</li>
+            <li>✓ Instant feedback</li>
+            <li>✓ Score tracking</li>
           </ul>
         </div>
       </div>
@@ -318,17 +318,17 @@
       </div>
       <div class="research-topics">
         <div class="topic-card">
-          <span class="topic-icon">âš¡</span>
+          <span class="topic-icon">⚡</span>
           <h4>Performa Tinggi</h4>
           <p>Native JavaScript untuk kecepatan maksimal tanpa dependency yang berat.</p>
         </div>
         <div class="topic-card">
-          <span class="topic-icon">ðŸ’¾</span>
+        <span class="topic-icon">⚡</span>
           <h4>Local Storage</h4>
           <p>Data tersimpan di browser Anda. Privacy terjaga, akses offline kapan saja.</p>
         </div>
         <div class="topic-card">
-          <span class="topic-icon">ðŸŽ¨</span>
+        <span class="topic-icon">🎨</span>
           <h4>Modern UI/UX</h4>
           <p>Interface yang clean, minimalis, dan fokus pada produktivitas penelitian.</p>
         </div>
@@ -355,9 +355,9 @@
     </section>
 
     <footer class="landing-footer">
-  <p><strong>SILab Suite</strong> â€” Information Systems Laboratory</p>
-      <p>Institut Teknologi Bandung Â· Platform Penelitian Sistem Informasi</p>
-      <p style="margin-top:12px; font-size:13px; opacity:0.7">Built with â¤ï¸ for research and education</p>
+  <p><strong>SILab Suite</strong> — Information Systems Laboratory</p>
+      <p>Institut Teknologi Bandung · Platform Penelitian Sistem Informasi</p>
+      <p style="margin-top:12px; font-size:13px; opacity:0.7">Built with ❤️ for research and education</p>
     </footer>
   </div>
 </div>
@@ -371,10 +371,10 @@
     
     <div class="app-nav-center">
       <div class="app-nav-controls">
-        <button id="saveAll" class="nav-btn"><span>ðŸ’¾</span> Save</button>
-        <button id="loadAll" class="nav-btn"><span>ðŸ“‚</span> Load</button>
-        <button id="exportAll" class="nav-btn"><span>ðŸ“¤</span> Export JSON</button>
-        <button id="resetAll" class="nav-btn danger"><span>ðŸ”„</span> Reset</button>
+        <button id="saveAll" class="nav-btn"><span>💾</span> Save</button>
+        <button id="loadAll" class="nav-btn"><span>📂</span> Load</button>
+        <button id="exportAll" class="nav-btn"><span>📤</span> Export JSON</button>
+        <button id="resetAll" class="nav-btn danger"><span>♻️</span> Reset</button>
       </div>
     </div>
     
@@ -391,31 +391,31 @@
   <nav class="app-tabs" role="tablist" aria-label="Modul">
     <div class="tabs-container">
       <button role="tab" aria-selected="true" class="tab active" data-tab="req">
-        <span class="tab-icon">ðŸ“</span>
+        <span class="tab-icon">📝</span>
         <span class="tab-text">Requirements Engineering</span>
       </button>
       <button role="tab" aria-selected="false" class="tab" data-tab="ea">
-        <span class="tab-icon">ðŸ¢</span>
+        <span class="tab-icon">🏗️</span>
         <span class="tab-text">Enterprise Architecture</span>
       </button>
       <button role="tab" aria-selected="false" class="tab" data-tab="ixd">
-        <span class="tab-icon">âœï¸</span>
+        <span class="tab-icon">✏️</span>
         <span class="tab-text">Interaction Design</span>
       </button>
       <button role="tab" aria-selected="false" class="tab" data-tab="diagram">
-        <span class="tab-icon">ðŸŽ¯</span>
+        <span class="tab-icon">🎯</span>
         <span class="tab-text">Diagram Builder</span>
       </button>
       <button role="tab" aria-selected="false" class="tab" data-tab="erd">
-        <span class="tab-icon">ðŸ—„ï¸</span>
+        <span class="tab-icon">🧱</span>
         <span class="tab-text">Conceptual Modeling</span>
       </button>
       <button role="tab" aria-selected="false" class="tab" data-tab="quiz">
-        <span class="tab-icon">ðŸ“š</span>
+        <span class="tab-icon">📘</span>
         <span class="tab-text">Quiz & Assessment</span>
       </button>
       <button role="tab" aria-selected="false" class="tab" data-tab="assignments">
-        <span class="tab-icon">ðŸŽ“</span>
+        <span class="tab-icon">🎓</span>
         <span class="tab-text">Tugas & Penilaian</span>
       </button>
     </div>
@@ -465,7 +465,7 @@
       <h2>EA Repository</h2>
       <div class="card">
         <label>Value Stream Stage
-          <input id="vs-name" placeholder="Contoh: Acquire â†’ Onboard â†’ Serve â†’ Retain">
+          <input id="vs-name" placeholder="Contoh: Acquire → Onboard → Serve → Retain">
         </label>
         <button id="add-vs">Tambah Stage</button>
       </div>
@@ -490,7 +490,7 @@
     </aside>
 
     <section class="content">
-      <h2>Value Stream Ã— Capability Mapping</h2>
+      <h2>Value Stream × Capability Mapping</h2>
       <div class="vs-grid" id="vs-grid">
       </div>
       <div class="cap-pool" id="cap-pool">
@@ -522,7 +522,7 @@
           <li>Klik komponen untuk spawn di canvas.</li>
           <li>Drag untuk mengatur posisi.</li>
           <li>Double-click teks untuk edit label.</li>
-          <li>Mode <b>Wire</b>: klik komponen A â†’ B untuk hubungkan.</li>
+          <li>Mode <b>Wire</b>: klik komponen A → B untuk hubungkan.</li>
           <li>Simulasi: klik button untuk trigger event.</li>
         </ol>
       </div>
@@ -575,16 +575,16 @@
         <h3>Tools</h3>
         <div class="tool-buttons">
           <button id="diagram-select-tool" class="tool-btn active">
-            <span>ðŸ”</span> Select
+            <span>🔍</span> Select
           </button>
           <button id="diagram-connector-tool" class="tool-btn">
-            <span>â†—ï¸</span> Connector
+            <span>↗️</span> Connector
           </button>
           <button id="diagram-text-tool" class="tool-btn">
             <span>T</span> Text
           </button>
           <button id="diagram-delete-tool" class="tool-btn danger">
-            <span>ðŸ—‘ï¸</span> Delete
+            <span>🗑️</span> Delete
           </button>
         </div>
       </div>
@@ -612,7 +612,7 @@
             </label>
             <label>Rotation
               <input type="range" id="shape-rotation" min="0" max="360" value="0">
-              <span id="rotation-value">0Â°</span>
+              <span id="rotation-value">0°</span>
             </label>
             <label>Width
               <input type="number" id="shape-width" min="20" max="500" value="120">
@@ -654,7 +654,6 @@
         <ul style="font-size:13px; line-height:1.6">
           <li>Klik shape untuk tambahkan ke canvas</li>
           <li>Drag untuk memindahkan</li>
-          <li>Connector: klik shape â†’ shape lain</li>
           <li>Connector: klik dua shape secara berurutan</li>
           <li>Delete: pilih shape lalu tekan Del</li>
         </ul>
@@ -678,11 +677,11 @@
         </div>
       </div>
         <div class="help-item">
-          <strong>âœï¸ Edit Text:</strong>
+          <strong>✏️ Edit Text:</strong>
           <span>Double-click any shape to edit text</span>
         </div>
         <div class="help-item">
-          <strong>ðŸ”— Connect:</strong>
+          <strong>🔗 Connect:</strong>
           <span>Use connector tool to link shapes</span>
         </div>
       </div>
@@ -1120,7 +1119,7 @@
 </main>
 
 <footer>
-  <p>SILab â€” Penelitian Sistem Informasi (HTML5 â€¢ CSS3 â€¢ JavaScript)</p>
+  <p>SILab — Penelitian Sistem Informasi (HTML5 • CSS3 • JavaScript)</p>
 </footer>
 </div>
 `;
