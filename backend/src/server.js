@@ -4,6 +4,7 @@ import './env.js';
 import express from 'express';
 import cors from 'cors';
 import morgan from 'morgan';
+import swaggerUi from 'swagger-ui-express';
 import { config } from './config.js';
 import { initStore } from './data/store.js';
 import { authenticateRequest } from './middleware/auth.js';
@@ -13,6 +14,7 @@ import { usersRouter } from './routes/users.js';
 import { announcementsRouter } from './routes/announcements.js';
 import { quizzesRouter } from './routes/quizzes.js';
 import { errorHandler, notFound } from './middleware/error.js';
+import { openApiSpec } from './swagger.js';
 
 async function bootstrap() {
   await initStore();
@@ -79,6 +81,10 @@ async function bootstrap() {
   );
   app.use(express.json());
   app.use(morgan('dev'));
+  app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(openApiSpec));
+  app.get('/api/docs.json', (req, res) => {
+    res.json(openApiSpec);
+  });
   app.use(authenticateRequest);
 
   app.get('/api/health', (req, res) => {
