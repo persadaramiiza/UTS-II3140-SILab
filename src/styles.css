@@ -2452,7 +2452,7 @@ footer{padding:16px; text-align:center; color:var(--muted); font-size:14px}
 }
 .quiz-q-number{
   background:linear-gradient(135deg,var(--accent),var(--accent-2));
-  color:#0a0e1a; font-weight:800; font-size:14px;
+  color:#ffffff; font-weight:800; font-size:14px;
   padding:6px 12px; border-radius:999px; min-width:36px;
   text-align:center; flex-shrink:0;
 }

@@ -54,26 +54,7 @@ export function initApp() {
     { id: 'student-02', role: 'student', username: 'mahasiswa2', password: 'mahasiswa234', name: 'Mahasiswa Alternatif' }
   ];
 
-  const ASSIGNMENTS_CATALOG = [
-    {
-      id: 'asg-req',
-      title: 'Analisis Requirement',
-      description: 'Susun minimal tiga user story beserta acceptance criteria untuk modul Sistem Informasi pilihan Anda.',
-      focus: 'Requirements'
-    },
-    {
-      id: 'asg-ea',
-      title: 'Value Stream Mapping',
-      description: 'Pemetaan value stream dan capability yang relevan untuk organisasi fiktif yang Anda rancang.',
-      focus: 'Enterprise Architecture'
-    },
-    {
-      id: 'asg-proto',
-      title: 'Prototype Wireframe',
-      description: 'Bangun wireframe interaktif dan jelaskan alur interaksi utama pada canvas prototyping.',
-      focus: 'Interaction Design'
-    }
-  ];
+  const ASSIGNMENTS_CATALOG = [];
 
   // ====== Quiz Defaults ======
   const QUIZ_MANAGER_ROLES = new Set(['assistant', 'admin']);
@@ -4935,7 +4916,6 @@ export function initApp() {
   cachedState = state;
   return state;
 }
-
 
 
 
