@@ -4258,10 +4258,10 @@ export function initApp() {
     if (scoreEl) scoreEl.textContent = score;
     const feedback = $('#quiz-feedback');
     if (feedback) {
-      if (score >= 90) feedback.textContent = 'ðŸŽ‰ Excellent! Pemahaman Anda sangat baik!';
-      else if (score >= 75) feedback.textContent = 'ðŸ‘ Great! Anda memahami materi dengan baik!';
-      else if (score >= 60) feedback.textContent = 'ðŸ‘Œ Good! Tingkatkan lagi pemahaman Anda!';
-      else feedback.textContent = 'ðŸ“š Keep learning! Pelajari kembali materinya!';
+      if (score >= 90) feedback.textContent = '\uD83D\uDD25 Excellent! Pemahaman Anda sangat baik!';
+      else if (score >= 75) feedback.textContent = '\u26A1 Great! Anda memahami materi dengan baik!';
+      else if (score >= 60) feedback.textContent = '\uD83D\uDCD8 Good! Tingkatkan lagi pemahaman Anda!';
+      else feedback.textContent = '\uD83D\uDCDA Keep learning! Pelajari kembali materinya!';
     }
 
     const resultEl = $('#quiz-result');
