@@ -1,4 +1,4 @@
-import { loginWithCredentials } from '../services/authApi.js';
+﻿import { loginWithCredentials } from '../services/authApi.js';
 import {
   fetchAssignments,
   fetchMySubmissions,
@@ -65,6 +65,178 @@ export function initApp() {
       focus: 'Interaction Design'
     }
   ];
+
+  // ====== Quiz Defaults ======
+  const QUIZ_MANAGER_ROLES = new Set(['assistant', 'admin']);
+
+  const quizQuestions = [
+    {
+      id: 'q1',
+      type: 'multiple',
+      question: 'Apa tujuan utama dari Information System Laboratory (ISL)?',
+      options: [
+        'Mengembangkan hardware komputer',
+        'Menyediakan teknologi untuk masyarakat informasi dan ekonomi digital',
+        'Membuat aplikasi mobile',
+        'Mengelola server dan jaringan'
+      ],
+      correct: 1
+    },
+    {
+      id: 'q2',
+      type: 'multiple',
+      question: 'Manakah yang BUKAN termasuk topik inti penelitian ISL?',
+      options: [
+        'Pengembangan Sistem Informasi',
+        'Analisis Data',
+        'Pemodelan Konseptual',
+        'Desain Hardware Elektronik'
+      ],
+      correct: 3
+    },
+    {
+      id: 'q3',
+      type: 'text',
+      question:
+        'Sebutkan metode prioritasi requirements yang digunakan dalam modul Requirements Engineering! (singkatan 4 huruf)',
+      correct: 'MoSCoW'
+    },
+    {
+      id: 'q4',
+      type: 'multiple',
+      question: 'Dalam MoSCoW prioritization, apa arti dari huruf "M"?',
+      options: ['Maybe-have', 'Must-have', 'Might-have', 'Minor-have'],
+      correct: 1
+    },
+    {
+      id: 'q5',
+      type: 'multiple',
+      question: 'Apa fungsi utama dari Enterprise Architecture dalam pengembangan SI?',
+      options: [
+        'Membuat desain UI/UX',
+        'Integrasi bisnis-teknologi dan optimalisasi value stream',
+        'Testing aplikasi',
+        'Menulis kode program'
+      ],
+      correct: 1
+    },
+    {
+      id: 'q6',
+      type: 'text',
+      question: 'Dalam ERD, simbol apa yang digunakan untuk menandai Primary Key? (emoji)',
+      correct: 'dY"`'
+    },
+    {
+      id: 'q7',
+      type: 'multiple',
+      question: 'Apa kepanjangan dari ERD?',
+      options: [
+        'Entity Relationship Database',
+        'Entity Relationship Diagram',
+        'Enterprise Resource Design',
+        'Extended Relational Database'
+      ],
+      correct: 1
+    },
+    {
+      id: 'q8',
+      type: 'multiple',
+      question: 'Dalam Value Stream mapping, apa fungsi dari "heat intensity" pada capability?',
+      options: [
+        'Menunjukkan suhu server',
+        'Mengukur kecepatan proses',
+        'Menunjukkan intensitas dukungan capability terhadap stage',
+        'Menghitung biaya operasional'
+      ],
+      correct: 2
+    },
+    {
+      id: 'q9',
+      type: 'text',
+      question: 'Sebutkan salah satu bentuk (shape) yang tersedia di Diagram Builder! (lowercase)',
+      correct: ['rectangle', 'circle', 'diamond', 'triangle', 'hexagon', 'cylinder', 'star', 'arrow']
+    },
+    {
+      id: 'q10',
+      type: 'multiple',
+      question: 'Apa tujuan dari pemodelan konseptual dalam pengembangan SI?',
+      options: [
+        'Membuat dokumentasi user manual',
+        'Representasi abstrak sistem dan proses bisnis untuk analisis',
+        'Mendesain logo perusahaan',
+        'Melakukan testing security'
+      ],
+      correct: 1
+    },
+    {
+      id: 'q11',
+      type: 'multiple',
+      question: 'Format export apa yang tersedia untuk Diagram Builder?',
+      options: ['Hanya PDF', 'Hanya JSON', 'SVG dan PNG', 'Hanya TXT'],
+      correct: 2
+    },
+    {
+      id: 'q12',
+      type: 'text',
+      question: 'Dalam wireframe, apa nama fitur yang menghubungkan dua komponen dengan garis/arrow?',
+      correct: ['wiring', 'wire', 'connector', 'connection']
+    },
+    {
+      id: 'q13',
+      type: 'multiple',
+      question: 'Apa fokus utama penelitian ISL terkait data?',
+      options: [
+        'Data Mining cryptocurrency',
+        'Manajemen data dan analisis informasi',
+        'Database administration',
+        'Data entry manual'
+      ],
+      correct: 1
+    },
+    {
+      id: 'q14',
+      type: 'multiple',
+      question: 'Dalam konteks ISL, apa yang dimaksud dengan "integrasi bisnis-teknologi"?',
+      options: [
+        'Menggabungkan beberapa perangkat hardware',
+        'Alignment strategis antara kebutuhan bisnis dan solusi TI',
+        'Membuat website e-commerce',
+        'Instalasi software bisnis'
+      ],
+      correct: 1
+    },
+    {
+      id: 'q15',
+      type: 'text',
+      question: 'Berapa jumlah modul yang tersedia di SILab Suite? (angka)',
+      correct: ['6', '6 modul', 'enam']
+    }
+  ];
+
+  const DEFAULT_QUIZ_TOPICS = [
+    {
+      id: 'quiz-isl-basics',
+      title: 'Dasar Information System Lab',
+      description: 'Pertanyaan pengantar seputar modul dan aktivitas utama di ISL.',
+      updatedAt: Date.now(),
+      questions: quizQuestions.map((q) => ({
+        ...q,
+        options: q.options ? [...q.options] : undefined,
+        correct: Array.isArray(q.correct) ? [...q.correct] : q.correct
+      }))
+    }
+  ];
+
+  function cloneQuizTopics(source) {
+    return source.map((topic) => ({
+      ...topic,
+      questions: topic.questions.map((q) => ({
+        ...q,
+        options: q.options ? [...q.options] : undefined,
+        correct: Array.isArray(q.correct) ? [...q.correct] : q.correct
+      }))
+    }));
+  }
 
   // ====== Landing & Auth Elements ======
   const landingPage = $('#landing-page');
@@ -426,7 +598,7 @@ export function initApp() {
       row.innerHTML = `
         <div>
           <strong>${escapeHtml(topic.title || 'Tanpa judul')}</strong>
-          <p class="muted">${topic.questions.length} soal • ${escapeHtml(topic.description || 'Tidak ada deskripsi')}</p>
+          <p class="muted">${topic.questions.length} soal â€¢ ${escapeHtml(topic.description || 'Tidak ada deskripsi')}</p>
         </div>
         <div class="quiz-builder-actions">
           <button type="button" data-action="set-active-topic" class="secondary-btn small">Pilih</button>
@@ -720,7 +892,7 @@ export function initApp() {
       <header class="admin-user-header">
         <div>
           <h4>${escapeHtml(user.name || user.username)}</h4>
-          <p class="muted">@${escapeHtml(user.username)}${user.email ? ` • ${escapeHtml(user.email)}` : ''}</p>
+          <p class="muted">@${escapeHtml(user.username)}${user.email ? ` â€¢ ${escapeHtml(user.email)}` : ''}</p>
         </div>
         <span class="badge badge-role-${escapeHtml(user.role)}">${escapeHtml(roleLabel)}</span>
       </header>
@@ -1048,7 +1220,7 @@ export function initApp() {
     card.innerHTML = `
       <header>
         <h4>${escapeHtml(item.title)}</h4>
-        <span class="announcement-meta">${formatTimestamp(item.createdAt)} • ${escapeHtml(item.createdByName || 'Pengumuman')}</span>
+        <span class="announcement-meta">${formatTimestamp(item.createdAt)} â€¢ ${escapeHtml(item.createdByName || 'Pengumuman')}</span>
       </header>
       <p>${escapeHtml(item.content)}</p>
     `;
@@ -1475,7 +1647,7 @@ export function initApp() {
             ? `Sudah dinilai ${submission.grade.score}/100 oleh ${submission.grade.graderName}`
             : 'Menunggu penilaian asisten';
           const timestamp = formatTimestamp(submission.submittedAt);
-          if (timestamp) statusText += ` • ${timestamp}`;
+          if (timestamp) statusText += ` â€¢ ${timestamp}`;
         }
         const status = document.createElement('p');
         status.className = 'assignment-status';
@@ -1538,7 +1710,7 @@ export function initApp() {
         const status = document.createElement('p');
         status.className = 'submission-meta';
         status.textContent = submission.grade
-          ? `Nilai ${submission.grade.score}/100 • ${submission.grade.graderName}`
+          ? `Nilai ${submission.grade.score}/100 â€¢ ${submission.grade.graderName}`
           : 'Menunggu penilaian.';
         card.appendChild(status);
 
@@ -1584,7 +1756,7 @@ export function initApp() {
       const assignment = getAssignmentMeta(submission.assignmentId);
 
       const title = document.createElement('h4');
-      title.textContent = `${submission.studentName || submission.studentId} • ${
+      title.textContent = `${submission.studentName || submission.studentId} â€¢ ${
         assignment ? assignment.title : submission.assignmentId
       }`;
       card.appendChild(title);
@@ -2652,7 +2824,7 @@ export function initApp() {
       <header>
         <span class="badge">${it.actor || 'Actor'}</span>
         <div style="display:flex; gap:6px">
-          <button class="del danger" title="Delete">×</button>
+          <button class="del danger" title="Delete">Ã—</button>
         </div>
       </header>
       <div contenteditable="true" class="title">${it.title}</div>
@@ -2700,7 +2872,7 @@ export function initApp() {
     downloadBlob(new Blob([csv], { type: 'text/csv' }), 'requirements.csv');
   });
 
-  // ====== EA: Value Stream × Capability ======
+  // ====== EA: Value Stream Ã— Capability ======
   $('#add-vs')?.addEventListener('click', () => {
     const name = ($('#vs-name').value || '').trim();
     if (!name) return;
@@ -3738,7 +3910,7 @@ export function initApp() {
         if (rotationInput) {
           rotationInput.value = shape.rotation || 0;
           const valueSpan = $('#rotation-value');
-          if (valueSpan) valueSpan.textContent = (shape.rotation || 0) + '°';
+          if (valueSpan) valueSpan.textContent = (shape.rotation || 0) + 'Â°';
         }
         if (widthInput) widthInput.value = shape.w;
         if (heightInput) heightInput.value = shape.h;
@@ -3782,7 +3954,7 @@ export function initApp() {
           } else if (id === 'shape-rotation') {
             shape.rotation = value;
             const valueSpan = $('#rotation-value');
-            if (valueSpan) valueSpan.textContent = value + '°';
+            if (valueSpan) valueSpan.textContent = value + 'Â°';
           }
           drawDiagram();
         }
@@ -3839,176 +4011,6 @@ export function initApp() {
   });
 
   // ====== QUIZ & ASSESSMENT ======
-  const quizQuestions = [
-    {
-      id: 'q1',
-      type: 'multiple',
-      question: 'Apa tujuan utama dari Information System Laboratory (ISL)?',
-      options: [
-        'Mengembangkan hardware komputer',
-        'Menyediakan teknologi untuk masyarakat informasi dan ekonomi digital',
-        'Membuat aplikasi mobile',
-        'Mengelola server dan jaringan'
-      ],
-      correct: 1
-    },
-    {
-      id: 'q2',
-      type: 'multiple',
-      question: 'Manakah yang BUKAN termasuk topik inti penelitian ISL?',
-      options: [
-        'Pengembangan Sistem Informasi',
-        'Analisis Data',
-        'Pemodelan Konseptual',
-        'Desain Hardware Elektronik'
-      ],
-      correct: 3
-    },
-    {
-      id: 'q3',
-      type: 'text',
-      question:
-        'Sebutkan metode prioritasi requirements yang digunakan dalam modul Requirements Engineering! (singkatan 4 huruf)',
-      correct: 'MoSCoW'
-    },
-    {
-      id: 'q4',
-      type: 'multiple',
-      question: 'Dalam MoSCoW prioritization, apa arti dari huruf "M"?',
-      options: ['Maybe-have', 'Must-have', 'Might-have', 'Minor-have'],
-      correct: 1
-    },
-    {
-      id: 'q5',
-      type: 'multiple',
-      question: 'Apa fungsi utama dari Enterprise Architecture dalam pengembangan SI?',
-      options: [
-        'Membuat desain UI/UX',
-        'Integrasi bisnis-teknologi dan optimalisasi value stream',
-        'Testing aplikasi',
-        'Menulis kode program'
-      ],
-      correct: 1
-    },
-    {
-      id: 'q6',
-      type: 'text',
-      question: 'Dalam ERD, simbol apa yang digunakan untuk menandai Primary Key? (emoji)',
-      correct: '🔑'
-    },
-    {
-      id: 'q7',
-      type: 'multiple',
-      question: 'Apa kepanjangan dari ERD?',
-      options: [
-        'Entity Relationship Database',
-        'Entity Relationship Diagram',
-        'Enterprise Resource Design',
-        'Extended Relational Database'
-      ],
-      correct: 1
-    },
-    {
-      id: 'q8',
-      type: 'multiple',
-      question: 'Dalam Value Stream mapping, apa fungsi dari "heat intensity" pada capability?',
-      options: [
-        'Menunjukkan suhu server',
-        'Mengukur kecepatan proses',
-        'Menunjukkan intensitas dukungan capability terhadap stage',
-        'Menghitung biaya operasional'
-      ],
-      correct: 2
-    },
-    {
-      id: 'q9',
-      type: 'text',
-      question: 'Sebutkan salah satu bentuk (shape) yang tersedia di Diagram Builder! (lowercase)',
-      correct: ['rectangle', 'circle', 'diamond', 'triangle', 'hexagon', 'cylinder', 'star', 'arrow']
-    },
-    {
-      id: 'q10',
-      type: 'multiple',
-      question: 'Apa tujuan dari pemodelan konseptual dalam pengembangan SI?',
-      options: [
-        'Membuat dokumentasi user manual',
-        'Representasi abstrak sistem dan proses bisnis untuk analisis',
-        'Mendesain logo perusahaan',
-        'Melakukan testing security'
-      ],
-      correct: 1
-    },
-    {
-      id: 'q11',
-      type: 'multiple',
-      question: 'Format export apa yang tersedia untuk Diagram Builder?',
-      options: ['Hanya PDF', 'Hanya JSON', 'SVG dan PNG', 'Hanya TXT'],
-      correct: 2
-    },
-    {
-      id: 'q12',
-      type: 'text',
-      question: 'Dalam wireframe, apa nama fitur yang menghubungkan dua komponen dengan garis/arrow?',
-      correct: ['wiring', 'wire', 'connector', 'connection']
-    },
-    {
-      id: 'q13',
-      type: 'multiple',
-      question: 'Apa fokus utama penelitian ISL terkait data?',
-      options: [
-        'Data Mining cryptocurrency',
-        'Manajemen data dan analisis informasi',
-        'Database administration',
-        'Data entry manual'
-      ],
-      correct: 1
-    },
-    {
-      id: 'q14',
-      type: 'multiple',
-      question: 'Dalam konteks ISL, apa yang dimaksud dengan "integrasi bisnis-teknologi"?',
-      options: [
-        'Menggabungkan beberapa perangkat hardware',
-        'Alignment strategis antara kebutuhan bisnis dan solusi TI',
-        'Membuat website e-commerce',
-        'Instalasi software bisnis'
-      ],
-      correct: 1
-    },
-    {
-      id: 'q15',
-      type: 'text',
-  question: 'Berapa jumlah modul yang tersedia di SILab Suite? (angka)',
-      correct: ['6', '6 modul', 'enam']
-    }
-  ];
-
-  const DEFAULT_QUIZ_TOPICS = [
-    {
-      id: 'quiz-isl-basics',
-      title: 'Dasar Information System Lab',
-      description: 'Pertanyaan pengantar seputar modul dan aktivitas utama di ISL.',
-      updatedAt: Date.now(),
-      questions: quizQuestions.map((q) => ({
-        ...q,
-        options: q.options ? [...q.options] : undefined,
-        correct: Array.isArray(q.correct) ? [...q.correct] : q.correct
-      }))
-    }
-  ];
-
-  const QUIZ_MANAGER_ROLES = new Set(['assistant', 'admin']);
-
-  function cloneQuizTopics(source) {
-    return source.map((topic) => ({
-      ...topic,
-      questions: topic.questions.map((q) => ({
-        ...q,
-        options: q.options ? [...q.options] : undefined,
-        correct: Array.isArray(q.correct) ? [...q.correct] : q.correct
-      }))
-    }));
-  }
 
   function initQuiz() {
     const container = $('#quiz-container');
@@ -4136,7 +4138,7 @@ export function initApp() {
         });
 
         if (answerDiv) {
-          answerDiv.textContent = `✓ Jawaban benar: ${q.options[q.correct]}`;
+          answerDiv.textContent = `âœ“ Jawaban benar: ${q.options[q.correct]}`;
         }
       } else {
         // Text answer
@@ -4152,7 +4154,7 @@ export function initApp() {
 
         if (answerDiv) {
           const correctText = Array.isArray(q.correct) ? q.correct.join(' / ') : q.correct;
-          answerDiv.textContent = `✓ Jawaban benar: ${correctText}`;
+          answerDiv.textContent = `âœ“ Jawaban benar: ${correctText}`;
         }
 
         const input = qDiv?.querySelector('.quiz-input');
@@ -4171,10 +4173,10 @@ export function initApp() {
     if (scoreEl) scoreEl.textContent = score;
     const feedback = $('#quiz-feedback');
     if (feedback) {
-      if (score >= 90) feedback.textContent = '🎉 Excellent! Pemahaman Anda sangat baik!';
-      else if (score >= 75) feedback.textContent = '👍 Great! Anda memahami materi dengan baik!';
-      else if (score >= 60) feedback.textContent = '👌 Good! Tingkatkan lagi pemahaman Anda!';
-      else feedback.textContent = '📚 Keep learning! Pelajari kembali materinya!';
+      if (score >= 90) feedback.textContent = 'ðŸŽ‰ Excellent! Pemahaman Anda sangat baik!';
+      else if (score >= 75) feedback.textContent = 'ðŸ‘ Great! Anda memahami materi dengan baik!';
+      else if (score >= 60) feedback.textContent = 'ðŸ‘Œ Good! Tingkatkan lagi pemahaman Anda!';
+      else feedback.textContent = 'ðŸ“š Keep learning! Pelajari kembali materinya!';
     }
 
     const resultEl = $('#quiz-result');
@@ -4331,7 +4333,7 @@ export function initApp() {
           .map(
             (attr) => `
         <li>
-          <span>${attr.pk ? '🔑 ' : ''}${attr.name}<small>${attr.type}</small></span>
+          <span>${attr.pk ? 'ðŸ”‘ ' : ''}${attr.name}<small>${attr.type}</small></span>
         </li>
       `
           )
@@ -4416,7 +4418,7 @@ export function initApp() {
       drawERD();
       return;
     }
-    const name = window.prompt(`Nama relasi ${a.name} ↔ ${b.name}?`, `${a.name}_${b.name}`);
+    const name = window.prompt(`Nama relasi ${a.name} â†” ${b.name}?`, `${a.name}_${b.name}`);
     if (name === null) {
       state.erd.pending = null;
       drawERD();
@@ -4460,7 +4462,7 @@ export function initApp() {
       const row = document.createElement('div');
       row.className = 'attr-row';
       row.innerHTML = `
-      <span>${attr.pk ? '🔑 ' : ''}${attr.name} <small>${attr.type}</small></span>
+      <span>${attr.pk ? 'ðŸ”‘ ' : ''}${attr.name} <small>${attr.type}</small></span>
       <div class="actions">
         <button type='button' data-action="toggle">${attr.pk ? 'PK' : 'Set PK'}</button>
         <button type='button' data-action="delete" class="danger">Hapus</button>
@@ -4510,8 +4512,8 @@ export function initApp() {
       const row = document.createElement('div');
       row.className = 'rel-row';
       row.innerHTML = `
-      <span><b>${a.name}</b> (${rel.cardA}) — <em>${rel.name}</em> — (${rel.cardB}) <b>${b.name}</b></span>
-      <button class="danger">×</button>
+      <span><b>${a.name}</b> (${rel.cardA}) â€” <em>${rel.name}</em> â€” (${rel.cardB}) <b>${b.name}</b></span>
+      <button class="danger">Ã—</button>
     `;
       row.querySelector('button').onclick = () => {
         state.erd.relations = state.erd.relations.filter((r) => r.id !== rel.id);
@@ -4831,6 +4833,7 @@ export function initApp() {
   cachedState = state;
   return state;
 }
+
 
 
 
