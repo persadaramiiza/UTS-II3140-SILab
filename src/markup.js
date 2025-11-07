@@ -32,7 +32,7 @@
   <div class="auth-card">
     <button type="button" class="auth-close" id="loginClose" aria-label="Tutup dialog login">&times;</button>
   <h2 id="auth-title">Masuk ke SILab</h2>
-    <p class="auth-subtitle">Gunakan akun contoh berikut untuk masuk sebagai asisten atau mahasiswa.</p>
+    <p class="auth-subtitle">Masuk dengan akun kampus atau Google untuk mengakses modul SILab.</p>
     <form id="login-form" class="auth-form">
       <label>Username
         <input id="login-username" name="username" autocomplete="username" required />
@@ -52,15 +52,6 @@
     <div class="auth-social">
       <div id="google-signin-button" class="google-signin-wrapper"></div>
       <p class="auth-social-hint">Login dengan akun Google Anda untuk akses cepat</p>
-    </div>
-    <div class="auth-hint">
-      <p><strong>Akun contoh:</strong></p>
-      <ul>
-        <li>Asisten &mdash; <code>asisten</code> / <code>asisten123</code></li>
-        <li>Mahasiswa &mdash; <code>mahasiswa</code> / <code>mahasiswa123</code></li>
-        <li>Mahasiswa 2 &mdash; <code>mahasiswa2</code> / <code>mahasiswa234</code></li>
-        <li>Admin &mdash; <code>admin</code> / <code>admin123</code></li>
-      </ul>
     </div>
   </div>
 </div>
