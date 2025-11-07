@@ -2196,7 +2196,7 @@ export function initApp() {
     resetQuizTopicForm();
   });
 
-  quizTopicList?.addEventListener('click', (e) => {
+  quizTopicList?.addEventListener('click', async (e) => {
     const action = e.target.dataset.action;
     if (!action) return;
     const row = e.target.closest('[data-topic-id]');
@@ -2333,7 +2333,7 @@ export function initApp() {
     resetQuizQuestionForm();
   });
 
-  quizQuestionList?.addEventListener('click', (e) => {
+  quizQuestionList?.addEventListener('click', async (e) => {
     const action = e.target.dataset.action;
     if (!action) return;
     const row = e.target.closest('[data-question-id]');
