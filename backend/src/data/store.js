@@ -554,6 +554,107 @@ export async function listAssignments() {
   return assignments.slice();
 }
 
+function normalizeAssignmentInput({ id, title, description, focus }) {
+  const now = new Date().toISOString();
+  const normalized = {
+    id: id || `asg-${randomUUID()}`,
+    title: (title || '').trim(),
+    description: (description || '').trim(),
+    focus: (focus || '').trim() || 'General',
+    createdAt: now,
+    updatedAt: now
+  };
+  if (!normalized.title) {
+    throw new Error('Judul tugas wajib diisi.');
+  }
+  return normalized;
+}
+
+export async function createAssignment({ title, description = '', focus = 'General' }) {
+  const payload = normalizeAssignmentInput({ title, description, focus });
+
+  if (useSupabase) {
+    const { data, error } = await supabase
+      .from('assignments')
+      .insert(toAssignmentRow(payload))
+      .select('*')
+      .maybeSingle();
+    handleSupabaseError('assignments.create', error);
+    return data ? fromAssignmentRow(data) : payload;
+  }
+
+  const state = await getState();
+  state.assignments.push({ ...payload });
+  await persist();
+  return { ...payload };
+}
+
+export async function updateAssignment(assignmentId, { title, description, focus }) {
+  if (!assignmentId) throw new Error('ID tugas wajib diisi.');
+  const updates = {};
+  if (title !== undefined) {
+    const trimmed = String(title).trim();
+    if (!trimmed) throw new Error('Judul tugas wajib diisi.');
+    updates.title = trimmed;
+  }
+  if (description !== undefined) {
+    updates.description = String(description).trim();
+  }
+  if (focus !== undefined) {
+    const trimmedFocus = String(focus).trim();
+    updates.focus = trimmedFocus || 'General';
+  }
+  const now = new Date().toISOString();
+  updates.updatedAt = now;
+
+  if (useSupabase) {
+    const supabaseUpdate = {
+      updated_at: now
+    };
+    if (updates.title !== undefined) supabaseUpdate.title = updates.title;
+    if (updates.description !== undefined) supabaseUpdate.description = updates.description;
+    if (updates.focus !== undefined) supabaseUpdate.focus = updates.focus;
+
+    const { data, error } = await supabase
+      .from('assignments')
+      .update(supabaseUpdate)
+      .eq('id', assignmentId)
+      .select('*')
+      .maybeSingle();
+    handleSupabaseError('assignments.update', error);
+    return data ? fromAssignmentRow(data) : null;
+  }
+
+  const state = await getState();
+  const index = state.assignments.findIndex((item) => item.id === assignmentId);
+  if (index === -1) {
+    return null;
+  }
+  const updated = { ...state.assignments[index], ...updates };
+  state.assignments[index] = updated;
+  await persist();
+  return { ...updated };
+}
+
+export async function deleteAssignment(assignmentId) {
+  if (!assignmentId) return false;
+  if (useSupabase) {
+    const { error: submissionsError } = await supabase.from('submissions').delete().eq('assignment_id', assignmentId);
+    handleSupabaseError('assignments.deleteSubmissions', submissionsError);
+    const { data, error } = await supabase.from('assignments').delete().eq('id', assignmentId).select('*').maybeSingle();
+    handleSupabaseError('assignments.delete', error);
+    return Boolean(data);
+  }
+
+  const state = await getState();
+  const before = state.assignments.length;
+  state.assignments = state.assignments.filter((item) => item.id !== assignmentId);
+  state.submissions = state.submissions.filter((item) => item.assignmentId !== assignmentId);
+  const changed = state.assignments.length !== before;
+  await persist();
+  return changed;
+}
+
 export async function listAnnouncements() {
   if (useSupabase) {
     const { data, error } = await supabase

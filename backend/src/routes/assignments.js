@@ -3,6 +3,9 @@ import { v4 as uuid } from 'uuid';
 import { requireAuth } from '../middleware/auth.js';
 import {
   listAssignments,
+  createAssignment,
+  updateAssignment,
+  deleteAssignment,
   listSubmissions,
   upsertSubmission,
   findSubmissionById,
@@ -70,6 +73,59 @@ assignmentsRouter.get('/assignments', requireAuth(), async (req, res, next) => {
   try {
     const assignments = await listAssignments();
     res.json({ assignments });
+  } catch (err) {
+    next(err);
+  }
+});
+
+assignmentsRouter.post('/assignments', requireAuth('assistant', 'admin'), async (req, res, next) => {
+  try {
+    const title = typeof req.body?.title === 'string' ? req.body.title.trim() : '';
+    const focus = typeof req.body?.focus === 'string' ? req.body.focus.trim() : '';
+    const description = typeof req.body?.description === 'string' ? req.body.description.trim() : '';
+    if (!title) {
+      return res.status(400).json({ message: 'Judul tugas wajib diisi.' });
+    }
+    const assignment = await createAssignment({ title, focus, description });
+    res.status(201).json({ message: 'Tugas dibuat.', assignment });
+  } catch (err) {
+    next(err);
+  }
+});
+
+assignmentsRouter.put('/assignments/:assignmentId', requireAuth('assistant', 'admin'), async (req, res, next) => {
+  try {
+    const assignmentId = req.params.assignmentId;
+    const payload = {};
+    if (req.body?.title !== undefined) {
+      payload.title = String(req.body.title);
+    }
+    if (req.body?.focus !== undefined) {
+      payload.focus = String(req.body.focus);
+    }
+    if (req.body?.description !== undefined) {
+      payload.description = String(req.body.description);
+    }
+    if (payload.title !== undefined && !payload.title.trim()) {
+      return res.status(400).json({ message: 'Judul tugas wajib diisi.' });
+    }
+    const updated = await updateAssignment(assignmentId, payload);
+    if (!updated) {
+      return res.status(404).json({ message: 'Tugas tidak ditemukan.' });
+    }
+    res.json({ message: 'Tugas diperbarui.', assignment: updated });
+  } catch (err) {
+    next(err);
+  }
+});
+
+assignmentsRouter.delete('/assignments/:assignmentId', requireAuth('assistant', 'admin'), async (req, res, next) => {
+  try {
+    const deleted = await deleteAssignment(req.params.assignmentId);
+    if (!deleted) {
+      return res.status(404).json({ message: 'Tugas tidak ditemukan.' });
+    }
+    res.json({ message: 'Tugas dihapus.' });
   } catch (err) {
     next(err);
   }

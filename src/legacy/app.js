@@ -10,7 +10,10 @@ import {
   getSubmissionFileDownloadUrl,
   deleteSubmissionFile,
   gradeSubmission,
-  clearSubmissionGrade
+  clearSubmissionGrade,
+  createAssignmentApi,
+  updateAssignmentApi,
+  deleteAssignmentApi
 } from '../services/assignmentsApi.js';
 import {
   listUsersApi,
@@ -807,9 +810,9 @@ export function initApp() {
     try {
       state.assignments.backendLoading = true;
       const assignments = await fetchAssignments();
-      if (Array.isArray(assignments) && assignments.length) {
-        state.assignments.catalog = assignments.map((item) => normalizeAssignment(item)).filter(Boolean);
-      }
+      state.assignments.catalog = Array.isArray(assignments)
+        ? assignments.map((item) => normalizeAssignment(item)).filter(Boolean)
+        : [];
 
       let submissions = [];
       if (user.role === 'student') {
@@ -2390,7 +2393,7 @@ export function initApp() {
     list.addEventListener('click', handleAdminListClick);
   });
 
-  assignmentCreateForm?.addEventListener('submit', (e) => {
+  assignmentCreateForm?.addEventListener('submit', async (e) => {
     e.preventDefault();
     const user = state.auth.currentUser;
     if (!user || user.role !== 'assistant') {
@@ -2407,6 +2410,27 @@ export function initApp() {
       return;
     }
 
+    if (state.assignments.backendEnabled) {
+      const submitBtn = assignmentCreateForm.querySelector('button[type="submit"]');
+      try {
+        if (submitBtn) submitBtn.disabled = true;
+        await createAssignmentApi({
+          title,
+          focus: focus || 'General',
+          description
+        });
+        assignmentCreateForm.reset();
+        toast('Tugas baru ditambahkan.', 'success');
+        await synchronizeAssignmentsFromBackend();
+      } catch (err) {
+        console.error('[Assignments] Gagal menambah tugas:', err);
+        toast(err.message || 'Gagal menambah tugas.', 'danger');
+      } finally {
+        if (submitBtn) submitBtn.disabled = false;
+      }
+      return;
+    }
+
     const assignment = normalizeAssignment({
       id: `asg-${uid()}`,
       title,
@@ -2419,13 +2443,13 @@ export function initApp() {
     state.assignments.editingDraft = null;
     state.assignments.catalog.push(assignment);
     assignmentCreateForm.reset();
-    toast('Tugas baru ditambahkan.');
+    toast('Tugas baru ditambahkan (sementara).', 'info');
 
     ensureAssignmentOptions();
     renderAssistantAssignments();
   });
 
-  assistantAssignmentList?.addEventListener('click', (e) => {
+  assistantAssignmentList?.addEventListener('click', async (e) => {
     const target = e.target;
     if (!target) return;
 
@@ -2469,18 +2493,32 @@ export function initApp() {
       const assignment = state.assignments.catalog.find((item) => item.id === id);
       if (!assignment) return;
       if (!window.confirm(`Hapus tugas "${assignment.title}" beserta seluruh pengumpulannya?`)) return;
-      state.assignments.catalog = state.assignments.catalog.filter((item) => item.id !== id);
-      state.assignments.submissions = state.assignments.submissions.filter((item) => item.assignmentId !== id);
-      if (state.assignments.selectedSubmissionId) {
-        const exists = state.assignments.submissions.some((item) => item.id === state.assignments.selectedSubmissionId);
-        if (!exists) state.assignments.selectedSubmissionId = null;
+      if (state.assignments.backendEnabled) {
+        try {
+          deleteBtn.disabled = true;
+          await deleteAssignmentApi(id);
+          toast('Tugas dihapus.', 'info');
+          await synchronizeAssignmentsFromBackend();
+        } catch (err) {
+          console.error('[Assignments] Gagal menghapus tugas:', err);
+          toast(err.message || 'Gagal menghapus tugas.', 'danger');
+        } finally {
+          deleteBtn.disabled = false;
+        }
+      } else {
+        state.assignments.catalog = state.assignments.catalog.filter((item) => item.id !== id);
+        state.assignments.submissions = state.assignments.submissions.filter((item) => item.assignmentId !== id);
+        if (state.assignments.selectedSubmissionId) {
+          const exists = state.assignments.submissions.some((item) => item.id === state.assignments.selectedSubmissionId);
+          if (!exists) state.assignments.selectedSubmissionId = null;
+        }
+        state.assignments.editingId = null;
+        state.assignments.editingDraft = null;
+        ensureAssignmentOptions();
+        renderStudentAssignments();
+        renderAssistantAssignments();
+        toast('Tugas dihapus (lokal).', 'info');
       }
-      state.assignments.editingId = null;
-      state.assignments.editingDraft = null;
-      ensureAssignmentOptions();
-      renderStudentAssignments();
-      renderAssistantAssignments();
-      toast('Tugas dihapus.');
       return;
     }
   });
@@ -2502,7 +2540,7 @@ export function initApp() {
     };
   });
 
-  assistantAssignmentList?.addEventListener('submit', (e) => {
+  assistantAssignmentList?.addEventListener('submit', async (e) => {
     const form = e.target.closest('.edit-form');
     if (!form) return;
     e.preventDefault();
@@ -2525,6 +2563,28 @@ export function initApp() {
       return;
     }
 
+    if (state.assignments.backendEnabled) {
+      const submitBtn = form.querySelector('button[type="submit"]');
+      try {
+        if (submitBtn) submitBtn.disabled = true;
+        await updateAssignmentApi(id, {
+          title,
+          focus: focus || 'General',
+          description
+        });
+        state.assignments.editingId = null;
+        state.assignments.editingDraft = null;
+        toast('Tugas diperbarui.', 'success');
+        await synchronizeAssignmentsFromBackend();
+      } catch (err) {
+        console.error('[Assignments] Gagal memperbarui tugas:', err);
+        toast(err.message || 'Gagal memperbarui tugas.', 'danger');
+      } finally {
+        if (submitBtn) submitBtn.disabled = false;
+      }
+      return;
+    }
+
     const updated = normalizeAssignment({
       ...assignment,
       title,
@@ -2534,16 +2594,14 @@ export function initApp() {
     });
     updated.updatedAt = new Date().toISOString();
 
-    state.assignments.catalog = state.assignments.catalog.map((item) =>
-      item.id === id ? { ...updated } : item
-    );
+    state.assignments.catalog = state.assignments.catalog.map((item) => (item.id === id ? { ...updated } : item));
     state.assignments.editingId = null;
     state.assignments.editingDraft = null;
 
     ensureAssignmentOptions();
     renderStudentAssignments();
     renderAssistantAssignments();
-    toast('Tugas diperbarui.');
+    toast('Tugas diperbarui (lokal).', 'info');
   });
 
   assignmentForm?.addEventListener('submit', async (e) => {
@@ -4916,8 +4974,3 @@ export function initApp() {
   cachedState = state;
   return state;
 }
-
-
-
-
-

@@ -139,3 +139,32 @@ export async function clearSubmissionGrade(submissionId) {
   });
   return data.submission ? mapSubmission(data.submission) : null;
 }
+
+export async function createAssignmentApi({ title, focus, description }) {
+  const data = await apiFetch('/assignments', {
+    method: 'POST',
+    body: {
+      title,
+      focus,
+      description
+    }
+  });
+  return data.assignment ? mapAssignment(data.assignment) : null;
+}
+
+export async function updateAssignmentApi(id, { title, focus, description }) {
+  const data = await apiFetch(`/assignments/${id}`, {
+    method: 'PUT',
+    body: {
+      title,
+      focus,
+      description
+    }
+  });
+  return data.assignment ? mapAssignment(data.assignment) : null;
+}
+
+export async function deleteAssignmentApi(id) {
+  await apiFetch(`/assignments/${id}`, { method: 'DELETE' });
+  return true;
+}
