@@ -22,6 +22,15 @@ import {
   fetchAnnouncements,
   createAnnouncement
 } from '../services/announcementsApi.js';
+import {
+  listQuizTopicsApi,
+  createQuizTopicApi,
+  updateQuizTopicApi,
+  deleteQuizTopicApi,
+  createQuizQuestionApi,
+  updateQuizQuestionApi,
+  deleteQuizQuestionApi
+} from '../services/quizApi.js';
 
 let initialized = false;
 let cachedState = null;
@@ -238,6 +247,9 @@ export function initApp() {
     }));
   }
 
+  const initialQuizTopics = cloneQuizTopics(DEFAULT_QUIZ_TOPICS);
+  const initialActiveQuizTopicId = initialQuizTopics[0]?.id || null;
+
   // ====== Landing & Auth Elements ======
   const landingPage = $('#landing-page');
   const mainApp = $('#main-app');
@@ -382,13 +394,14 @@ export function initApp() {
     diagram: { tool: 'select', shapes: [], connectors: [], selected: null, tempConnector: null }, // draw.io-like
     erd: { mode: 'move', entities: [], relations: [], selected: null, pending: null },
     quiz: {
-      topics: cloneQuizTopics(DEFAULT_QUIZ_TOPICS),
-      activeTopicId: DEFAULT_QUIZ_TOPICS[0]?.id || null,
+      topics: initialQuizTopics,
+      activeTopicId: initialActiveQuizTopicId,
       answers: {},
       submitted: false,
       score: 0,
       editingQuestionId: null,
-      editingTopicId: null
+      editingTopicId: null,
+      loading: false
     }
   };
 
@@ -592,13 +605,19 @@ export function initApp() {
     }
 
     topics.forEach((topic) => {
+      const questionCount =
+        typeof topic.questionCount === 'number'
+          ? topic.questionCount
+          : Array.isArray(topic.questions)
+          ? topic.questions.length
+          : 0;
       const row = document.createElement('div');
       row.className = 'quiz-builder-row';
       row.dataset.topicId = topic.id;
       row.innerHTML = `
         <div>
           <strong>${escapeHtml(topic.title || 'Tanpa judul')}</strong>
-          <p class="muted">${topic.questions.length} soal &bull; ${escapeHtml(topic.description || 'Tidak ada deskripsi')}</p>
+          <p class="muted">${questionCount} soal &bull; ${escapeHtml(topic.description || 'Tidak ada deskripsi')}</p>
         </div>
         <div class="quiz-builder-actions">
           <button type="button" data-action="set-active-topic" class="secondary-btn small">Pilih</button>
@@ -622,12 +641,14 @@ export function initApp() {
       return;
     }
 
-    if (!topic.questions.length) {
+    const questions = Array.isArray(topic.questions) ? topic.questions : [];
+
+    if (!questions.length) {
       quizQuestionList.innerHTML = '<p class="muted">Belum ada soal pada topik ini.</p>';
       return;
     }
 
-    topic.questions.forEach((q, idx) => {
+    questions.forEach((q, idx) => {
       const row = document.createElement('div');
       row.className = 'quiz-builder-row';
       row.dataset.questionId = q.id;
@@ -644,6 +665,63 @@ export function initApp() {
       `;
       quizQuestionList.appendChild(row);
     });
+  }
+
+  async function refreshQuizTopics({ includeQuestions = true, silent = false } = {}) {
+    try {
+      if (!silent) state.quiz.loading = true;
+      const topics = await listQuizTopicsApi({ includeQuestions });
+      const normalized = (topics || []).map((topic) => {
+        const apiQuestions =
+          includeQuestions && Array.isArray(topic.questions)
+            ? topic.questions
+            : includeQuestions && Array.isArray(topic.quiz_questions)
+            ? topic.quiz_questions
+            : [];
+        const questions = includeQuestions
+          ? apiQuestions.map((question) => ({
+              id: question.id,
+              topicId: question.topicId || question.topic_id || topic.id,
+              type: question.type,
+              question: question.question,
+              options: Array.isArray(question.options) ? question.options : [],
+              correct: question.correct,
+              order: question.order ?? question.order_index ?? 0,
+              createdAt: question.createdAt || question.created_at || null,
+              updatedAt: question.updatedAt || question.updated_at || null
+            }))
+          : [];
+        return {
+          id: topic.id,
+          title: topic.title,
+          description: topic.description || '',
+          createdBy: topic.createdBy || topic.created_by || null,
+          createdAt: topic.createdAt || topic.created_at || null,
+          updatedAt: topic.updatedAt || topic.updated_at || null,
+          questions,
+          questionCount:
+            typeof topic.questionCount === 'number'
+              ? topic.questionCount
+              : includeQuestions
+              ? questions.length
+              : topic.question_count || 0
+        };
+      });
+      state.quiz.topics = normalized;
+      if (!state.quiz.activeTopicId && normalized.length) {
+        state.quiz.activeTopicId = normalized[0].id;
+      }
+      ensureActiveQuizTopic();
+      updateQuizTopicUI();
+      initQuiz();
+    } catch (err) {
+      console.error('[Quiz] Gagal memuat topik:', err);
+      if (!silent) {
+        toast(err.message || 'Gagal memuat data kuis.', 'danger');
+      }
+    } finally {
+      state.quiz.loading = false;
+    }
   }
 
   function updateQuizQuestionFormState() {
@@ -2068,7 +2146,7 @@ export function initApp() {
     renderQuizQuestionList();
   });
 
-  quizTopicForm?.addEventListener('submit', (e) => {
+  quizTopicForm?.addEventListener('submit', async (e) => {
     e.preventDefault();
     if (!canManageQuiz()) {
       toast('Hanya asisten/admin yang dapat mengelola kuis.', 'warning');
@@ -2084,33 +2162,33 @@ export function initApp() {
       return;
     }
     const topicId = (quizTopicIdInput?.value || '').trim();
-    if (topicId) {
-      const topic = getQuizTopicById(topicId);
-      if (!topic) {
-        toast('Topik tidak ditemukan.', 'danger');
-        resetQuizTopicForm();
-        return;
+    try {
+      if (quizTopicFormMessage) {
+        quizTopicFormMessage.textContent = 'Menyimpan topik...';
+        quizTopicFormMessage.className = 'muted';
       }
-      topic.title = title;
-      topic.description = description;
-      topic.updatedAt = Date.now();
-      toast('Topik kuis diperbarui.', 'success');
-    } else {
-      const newTopic = {
-        id: `quiz-${uid()}`,
-        title,
-        description,
-        questions: [],
-        updatedAt: Date.now()
-      };
-      state.quiz.topics.push(newTopic);
-      state.quiz.activeTopicId = newTopic.id;
-      toast('Topik kuis baru ditambahkan.', 'success');
+      if (topicId) {
+        await updateQuizTopicApi(topicId, { title, description });
+        toast('Topik kuis diperbarui.', 'success');
+      } else {
+        const topic = await createQuizTopicApi({ title, description });
+        state.quiz.activeTopicId = topic?.id || state.quiz.activeTopicId;
+        toast('Topik kuis baru ditambahkan.', 'success');
+      }
+      resetQuizTopicForm();
+      await refreshQuizTopics({ includeQuestions: true });
+      if (quizTopicFormMessage) {
+        quizTopicFormMessage.textContent = '';
+        quizTopicFormMessage.className = 'muted';
+      }
+    } catch (err) {
+      console.error('[Quiz] Gagal menyimpan topik:', err);
+      if (quizTopicFormMessage) {
+        quizTopicFormMessage.textContent = err.message || 'Gagal menyimpan topik.';
+        quizTopicFormMessage.className = 'form-error';
+      }
+      toast(err.message || 'Gagal menyimpan topik.', 'danger');
     }
-    resetQuizTopicForm();
-    updateQuizTopicUI();
-    resetQuizProgress();
-    initQuiz();
   });
 
   quizTopicCancelBtn?.addEventListener('click', (e) => {
@@ -2142,22 +2220,22 @@ export function initApp() {
         return;
       }
       if (!window.confirm(`Hapus topik "${topic.title}" beserta semua soalnya?`)) return;
-      state.quiz.topics = getQuizTopics().filter((t) => t.id !== topic.id);
-      if (state.quiz.activeTopicId === topic.id) {
-        state.quiz.activeTopicId = getQuizTopics()[0]?.id || null;
-        resetQuizProgress();
+      try {
+        await deleteQuizTopicApi(topic.id);
+        toast('Topik kuis dihapus.', 'info');
+        resetQuizTopicForm();
+        resetQuizQuestionForm();
+        await refreshQuizTopics({ includeQuestions: true });
+      } catch (err) {
+        console.error('[Quiz] Gagal menghapus topik:', err);
+        toast(err.message || 'Gagal menghapus topik.', 'danger');
       }
-      toast('Topik kuis dihapus.', 'info');
-      resetQuizTopicForm();
-      resetQuizQuestionForm();
-      updateQuizTopicUI();
-      initQuiz();
     }
   });
 
   quizQuestionType?.addEventListener('change', updateQuizQuestionFormState);
 
-  quizQuestionForm?.addEventListener('submit', (e) => {
+  quizQuestionForm?.addEventListener('submit', async (e) => {
     e.preventDefault();
     if (!canManageQuiz()) {
       toast('Hanya asisten/admin yang dapat mengelola kuis.', 'warning');
@@ -2182,8 +2260,7 @@ export function initApp() {
       return;
     }
 
-    let nextQuestion = {
-      id: state.quiz.editingQuestionId || `qq-${uid()}`,
+    const payload = {
       type,
       question: questionText
     };
@@ -2208,8 +2285,8 @@ export function initApp() {
         }
         return;
       }
-      nextQuestion.options = options;
-      nextQuestion.correct = correctIndex;
+      payload.options = options;
+      payload.correct = correctIndex;
     } else {
       const answers = (quizQuestionCorrect?.value || '')
         .split('\n')
@@ -2222,25 +2299,32 @@ export function initApp() {
         }
         return;
       }
-      nextQuestion.correct = answers.length === 1 ? answers[0] : answers;
+      payload.options = [];
+      payload.correct = answers.length === 1 ? answers[0] : answers;
     }
 
-    if (state.quiz.editingQuestionId) {
-      const idx = topic.questions.findIndex((q) => q.id === state.quiz.editingQuestionId);
-      if (idx >= 0) {
-        topic.questions[idx] = nextQuestion;
+    try {
+      if (quizQuestionFormMessage) {
+        quizQuestionFormMessage.textContent = 'Menyimpan soal...';
+        quizQuestionFormMessage.className = 'muted';
       }
-      toast('Soal kuis diperbarui.', 'success');
-    } else {
-      topic.questions.push(nextQuestion);
-      toast('Soal kuis ditambahkan.', 'success');
-    }
-    topic.updatedAt = Date.now();
-    resetQuizQuestionForm();
-    renderQuizQuestionList();
-    if (topic.id === state.quiz.activeTopicId) {
-      resetQuizProgress();
-      initQuiz();
+      if (state.quiz.editingQuestionId) {
+        await updateQuizQuestionApi(topic.id, state.quiz.editingQuestionId, payload);
+        toast('Soal kuis diperbarui.', 'success');
+      } else {
+        await createQuizQuestionApi(topic.id, payload);
+        toast('Soal kuis ditambahkan.', 'success');
+      }
+      resetQuizQuestionForm();
+      await refreshQuizTopics({ includeQuestions: true });
+      setActiveQuizTopic(topic.id);
+    } catch (err) {
+      console.error('[Quiz] Gagal menyimpan soal:', err);
+      if (quizQuestionFormMessage) {
+        quizQuestionFormMessage.textContent = err.message || 'Gagal menyimpan soal.';
+        quizQuestionFormMessage.className = 'form-error';
+      }
+      toast(err.message || 'Gagal menyimpan soal.', 'danger');
     }
   });
 
@@ -2265,13 +2349,15 @@ export function initApp() {
       populateQuizQuestionForm(topic.id, question);
     } else if (action === 'delete-question') {
       if (!window.confirm('Hapus soal ini?')) return;
-      topic.questions = topic.questions.filter((q) => q.id !== question.id);
-      toast('Soal kuis dihapus.', 'info');
-      if (topic.id === state.quiz.activeTopicId) {
-        resetQuizProgress();
-        initQuiz();
+      try {
+        await deleteQuizQuestionApi(topic.id, question.id);
+        toast('Soal kuis dihapus.', 'info');
+        await refreshQuizTopics({ includeQuestions: true });
+        setActiveQuizTopic(topic.id);
+      } catch (err) {
+        console.error('[Quiz] Gagal menghapus soal:', err);
+        toast(err.message || 'Gagal menghapus soal.', 'danger');
       }
-      renderQuizQuestionList();
     }
   });
 
@@ -2706,6 +2792,7 @@ export function initApp() {
   ensureAssignmentOptions();
   clearGradeForm();
   refreshAnnouncements();
+  refreshQuizTopics({ includeQuestions: true, silent: true });
   renderAdminUsers();
   updateQuizTopicUI();
   updateQuizManagerVisibility();
@@ -4014,7 +4101,7 @@ export function initApp() {
     if (!container) return;
 
     const topic = getActiveQuizTopic();
-    const questions = topic ? topic.questions : [];
+    const questions = topic && Array.isArray(topic.questions) ? topic.questions : [];
     container.innerHTML = '';
 
     if (!topic) {
@@ -4037,7 +4124,8 @@ export function initApp() {
 
       let optionsHTML = '';
       if (q.type === 'multiple') {
-        optionsHTML = q.options
+        const opts = Array.isArray(q.options) ? q.options : [];
+        optionsHTML = opts
           .map(
             (opt, i) => `
         <div class="quiz-option" data-option="${i}">
@@ -4054,7 +4142,7 @@ export function initApp() {
       qDiv.innerHTML = `
       <div class="quiz-q-header">
         <div class="quiz-q-number">${idx + 1}</div>
-        <div class="quiz-q-text">${q.question}</div>
+        <div class="quiz-q-text">${escapeHtml(q.question || '')}</div>
         <div class="quiz-q-type">${q.type === 'multiple' ? 'Pilgan' : 'Isian'}</div>
       </div>
       <div class="quiz-options">
@@ -4646,13 +4734,6 @@ export function initApp() {
     state.assignments.editingDraft = null;
     if (assignmentFileInput) assignmentFileInput.value = '';
 
-    if (Array.isArray(data.quiz?.topics) && data.quiz.topics.length) {
-      state.quiz.topics = cloneQuizTopics(data.quiz.topics);
-      state.quiz.activeTopicId = data.quiz.activeTopicId || state.quiz.topics[0]?.id || null;
-    } else {
-      state.quiz.topics = cloneQuizTopics(DEFAULT_QUIZ_TOPICS);
-      state.quiz.activeTopicId = DEFAULT_QUIZ_TOPICS[0]?.id || null;
-    }
     resetQuizProgress();
     state.quiz.editingQuestionId = null;
     state.quiz.editingTopicId = null;
@@ -4677,6 +4758,7 @@ export function initApp() {
     ensureAssignmentOptions();
     updateAuthUI();
     updateAttachmentStatus();
+    refreshQuizTopics({ includeQuestions: true, silent: true });
     toast('Data berhasil dimuat', 'success');
   });
   $('#exportAll')?.addEventListener('click', () => {
@@ -4728,6 +4810,7 @@ export function initApp() {
     ensureAssignmentOptions();
     updateAuthUI();
     updateAttachmentStatus();
+    refreshQuizTopics({ includeQuestions: true, silent: true });
     showLanding();
   });
 

@@ -14,6 +14,55 @@ function cloneState(state) {
   return JSON.parse(JSON.stringify(state));
 }
 
+function buildDefaultQuizTopics(now) {
+  return [
+    {
+      id: 'quiz-isl-basics',
+      title: 'Dasar Information System Lab',
+      description: 'Pertanyaan pengantar seputar modul dan aktivitas utama di ISL.',
+      createdAt: now,
+      updatedAt: now,
+      createdBy: 'assistant-isl',
+      questions: [
+        {
+          id: 'quiz-isl-q1',
+          type: 'multiple',
+          question: 'Apa tujuan utama dari Information System Laboratory (ISL)?',
+          options: [
+            'Mengembangkan hardware komputer',
+            'Menyediakan teknologi untuk masyarakat informasi dan ekonomi digital',
+            'Membuat aplikasi mobile',
+            'Mengelola server dan jaringan'
+          ],
+          correct: 1,
+          order: 0,
+          createdAt: now,
+          updatedAt: now
+        },
+        {
+          id: 'quiz-isl-q2',
+          type: 'multiple',
+          question: 'Dalam modul Requirements Engineering, metode prioritas apa yang digunakan?',
+          options: ['MoSCoW', 'RICE', 'WSJF', 'Kano'],
+          correct: 0,
+          order: 1,
+          createdAt: now,
+          updatedAt: now
+        },
+        {
+          id: 'quiz-isl-q3',
+          type: 'text',
+          question: 'Sebutkan salah satu artefak yang dapat dikumpulkan mahasiswa di SILab.',
+          correct: ['wireframe', 'diagram', 'laporan'],
+          order: 2,
+          createdAt: now,
+          updatedAt: now
+        }
+      ]
+    }
+  ];
+}
+
 function buildDefaultData() {
   const hash = (password) => bcrypt.hashSync(password, 10);
   const now = new Date().toISOString();
@@ -91,7 +140,8 @@ function buildDefaultData() {
       }
     ],
     submissions: [],
-    announcements: []
+    announcements: [],
+    quizTopics: buildDefaultQuizTopics(now)
   };
 }
 
@@ -175,6 +225,53 @@ function toAssignmentRow(assignment) {
     created_at: assignment.createdAt ?? now,
     updated_at: assignment.updatedAt ?? now
   };
+}
+
+function fromQuizTopicRow(row) {
+  if (!row) return null;
+  return {
+    id: row.id,
+    title: row.title,
+    description: row.description ?? '',
+    createdBy: row.created_by ?? null,
+    createdAt: row.created_at ?? null,
+    updatedAt: row.updated_at ?? null
+  };
+}
+
+function fromQuizQuestionRow(row) {
+  if (!row) return null;
+  return {
+    id: row.id,
+    topicId: row.topic_id,
+    type: row.type,
+    question: row.question,
+    options: Array.isArray(row.options) ? row.options : row.options ?? [],
+    correct: row.correct,
+    order: row.order_index ?? 0,
+    createdAt: row.created_at ?? null,
+    updatedAt: row.updated_at ?? null
+  };
+}
+
+function ensureQuizTopicsState(state) {
+  if (!state.quizTopics) state.quizTopics = [];
+  state.quizTopics = state.quizTopics.map((topic) => ({
+    ...topic,
+    questions: Array.isArray(topic.questions) ? topic.questions : []
+  }));
+}
+
+async function fetchQuizQuestionsByTopicIds(topicIds) {
+  if (!topicIds.length) return [];
+  const { data, error } = await supabase
+    .from('quiz_questions')
+    .select('*')
+    .in('topic_id', topicIds)
+    .order('order_index', { ascending: true })
+    .order('created_at', { ascending: true });
+  handleSupabaseError('quizQuestions.list', error);
+  return data || [];
 }
 
 function fromSubmissionRow(row) {
@@ -547,6 +644,313 @@ export async function createAnnouncement({ title, content, createdBy, createdByN
   state.announcements.unshift(payload);
   await persist();
   return payload;
+}
+
+export async function listQuizTopics({ includeQuestions = false } = {}) {
+  if (useSupabase) {
+    const { data, error } = await supabase.from('quiz_topics').select('*').order('created_at', { ascending: true });
+    handleSupabaseError('quizTopics.list', error);
+    const topics = (data || []).map(fromQuizTopicRow);
+    if (includeQuestions && topics.length) {
+      const questionRows = await fetchQuizQuestionsByTopicIds(topics.map((t) => t.id));
+      const grouped = new Map(topics.map((topic) => [topic.id, []]));
+      questionRows.forEach((row) => {
+        const question = fromQuizQuestionRow(row);
+        if (!grouped.has(question.topicId)) grouped.set(question.topicId, []);
+        grouped.get(question.topicId).push(question);
+      });
+      return topics.map((topic) => ({
+        ...topic,
+        questions: grouped.get(topic.id) || [],
+        questionCount: grouped.get(topic.id)?.length || 0
+      }));
+    }
+    return topics.map((topic) => ({
+      ...topic,
+      questionCount: 0
+    }));
+  }
+
+  const state = await getState();
+  ensureQuizTopicsState(state);
+  return state.quizTopics.map((topic) => ({
+    id: topic.id,
+    title: topic.title,
+    description: topic.description || '',
+    createdBy: topic.createdBy || null,
+    createdAt: topic.createdAt || null,
+    updatedAt: topic.updatedAt || null,
+    questions: includeQuestions ? topic.questions.map((q) => ({ ...q })) : undefined,
+    questionCount: topic.questions.length
+  }));
+}
+
+export async function getQuizTopicById(topicId, { includeQuestions = false } = {}) {
+  if (useSupabase) {
+    const { data, error } = await supabase.from('quiz_topics').select('*').eq('id', topicId).maybeSingle();
+    handleSupabaseError('quizTopics.get', error);
+    if (!data) return null;
+    const topic = fromQuizTopicRow(data);
+    if (includeQuestions) {
+      const { data: questionRows, error: questionError } = await supabase
+        .from('quiz_questions')
+        .select('*')
+        .eq('topic_id', topicId)
+        .order('order_index', { ascending: true })
+        .order('created_at', { ascending: true });
+      handleSupabaseError('quizQuestions.list', questionError);
+      topic.questions = (questionRows || []).map(fromQuizQuestionRow);
+      topic.questionCount = topic.questions.length;
+    }
+    return topic;
+  }
+
+  const state = await getState();
+  ensureQuizTopicsState(state);
+  const topic = state.quizTopics.find((item) => item.id === topicId);
+  if (!topic) return null;
+  return {
+    ...topic,
+    questions: includeQuestions ? topic.questions.map((q) => ({ ...q })) : undefined,
+    questionCount: topic.questions.length
+  };
+}
+
+export async function createQuizTopic({ title, description, createdBy }) {
+  const now = new Date().toISOString();
+  if (useSupabase) {
+    const { data, error } = await supabase
+      .from('quiz_topics')
+      .insert({
+        title,
+        description: description || '',
+        created_by: createdBy || null,
+        created_at: now,
+        updated_at: now
+      })
+      .select('*')
+      .maybeSingle();
+    handleSupabaseError('quizTopics.create', error);
+    return { ...fromQuizTopicRow(data), questions: [], questionCount: 0 };
+  }
+
+  const state = await getState();
+  ensureQuizTopicsState(state);
+  const topic = {
+    id: randomUUID(),
+    title,
+    description: description || '',
+    createdBy: createdBy || null,
+    createdAt: now,
+    updatedAt: now,
+    questions: []
+  };
+  state.quizTopics.push(topic);
+  await persist();
+  return { ...topic, questionCount: 0 };
+}
+
+export async function updateQuizTopic(topicId, { title, description }) {
+  const now = new Date().toISOString();
+  if (useSupabase) {
+    const { data, error } = await supabase
+      .from('quiz_topics')
+      .update({
+        title,
+        description: description ?? '',
+        updated_at: now
+      })
+      .eq('id', topicId)
+      .select('*')
+      .maybeSingle();
+    handleSupabaseError('quizTopics.update', error);
+    if (!data) return null;
+    return { ...fromQuizTopicRow(data) };
+  }
+
+  const state = await getState();
+  ensureQuizTopicsState(state);
+  const topic = state.quizTopics.find((item) => item.id === topicId);
+  if (!topic) return null;
+  if (title !== undefined) topic.title = title;
+  if (description !== undefined) topic.description = description;
+  topic.updatedAt = now;
+  await persist();
+  return { ...topic, questions: topic.questions.map((q) => ({ ...q })), questionCount: topic.questions.length };
+}
+
+export async function deleteQuizTopic(topicId) {
+  if (useSupabase) {
+    const { error } = await supabase.from('quiz_topics').delete().eq('id', topicId);
+    handleSupabaseError('quizTopics.delete', error);
+    return true;
+  }
+
+  const state = await getState();
+  ensureQuizTopicsState(state);
+  const index = state.quizTopics.findIndex((topic) => topic.id === topicId);
+  if (index === -1) return false;
+  state.quizTopics.splice(index, 1);
+  await persist();
+  return true;
+}
+
+export async function listQuizQuestions(topicId) {
+  if (useSupabase) {
+    const { data, error } = await supabase
+      .from('quiz_questions')
+      .select('*')
+      .eq('topic_id', topicId)
+      .order('order_index', { ascending: true })
+      .order('created_at', { ascending: true });
+    handleSupabaseError('quizQuestions.list', error);
+    return (data || []).map(fromQuizQuestionRow);
+  }
+
+  const state = await getState();
+  ensureQuizTopicsState(state);
+  const topic = state.quizTopics.find((item) => item.id === topicId);
+  if (!topic) return [];
+  return topic.questions.map((q) => ({ ...q }));
+}
+
+function normalizeQuestionPayload({ type, question, options, correct }) {
+  if (type !== 'multiple' && type !== 'text') {
+    throw new Error('Jenis soal tidak didukung.');
+  }
+  if (!question || !question.trim()) {
+    throw new Error('Pertanyaan wajib diisi.');
+  }
+  const payload = {
+    type,
+    question: question.trim()
+  };
+  if (type === 'multiple') {
+    const normalizedOptions = (options || []).map((opt) => String(opt ?? '').trim()).filter(Boolean);
+    if (normalizedOptions.length < 2) {
+      throw new Error('Masukkan minimal dua opsi jawaban.');
+    }
+    const correctIndex = Number(correct);
+    if (!Number.isInteger(correctIndex) || correctIndex < 0 || correctIndex >= normalizedOptions.length) {
+      throw new Error('Nomor jawaban benar tidak valid.');
+    }
+    payload.options = normalizedOptions;
+    payload.correct = correctIndex;
+  } else {
+    const normalizedAnswers = Array.isArray(correct)
+      ? correct.map((ans) => String(ans ?? '').trim()).filter(Boolean)
+      : String(correct ?? '').split('\n').map((ans) => ans.trim()).filter(Boolean);
+    if (!normalizedAnswers.length) {
+      throw new Error('Masukkan minimal satu jawaban benar.');
+    }
+    payload.options = [];
+    payload.correct = normalizedAnswers.length === 1 ? normalizedAnswers[0] : normalizedAnswers;
+  }
+  return payload;
+}
+
+export async function createQuizQuestion(topicId, data) {
+  const now = new Date().toISOString();
+  const payload = normalizeQuestionPayload(data);
+  if (useSupabase) {
+    const { data: orderData, error: orderError } = await supabase
+      .from('quiz_questions')
+      .select('order_index')
+      .eq('topic_id', topicId)
+      .order('order_index', { ascending: false })
+      .limit(1);
+    handleSupabaseError('quizQuestions.order', orderError);
+    const nextOrder = orderData && orderData.length ? (orderData[0].order_index ?? 0) + 1 : 0;
+    const { data: inserted, error } = await supabase
+      .from('quiz_questions')
+      .insert({
+        topic_id: topicId,
+        type: payload.type,
+        question: payload.question,
+        options: payload.options,
+        correct: payload.correct,
+        order_index: nextOrder,
+        created_at: now,
+        updated_at: now
+      })
+      .select('*')
+      .maybeSingle();
+    handleSupabaseError('quizQuestions.create', error);
+    return fromQuizQuestionRow(inserted);
+  }
+
+  const state = await getState();
+  ensureQuizTopicsState(state);
+  const topic = state.quizTopics.find((item) => item.id === topicId);
+  if (!topic) {
+    throw new Error('Topik kuis tidak ditemukan.');
+  }
+  const question = {
+    id: randomUUID(),
+    topicId,
+    type: payload.type,
+    question: payload.question,
+    options: payload.options,
+    correct: payload.correct,
+    order: topic.questions.length,
+    createdAt: now,
+    updatedAt: now
+  };
+  topic.questions.push(question);
+  topic.updatedAt = now;
+  await persist();
+  return { ...question };
+}
+
+export async function updateQuizQuestion(topicId, questionId, data) {
+  const now = new Date().toISOString();
+  const payload = normalizeQuestionPayload(data);
+  if (useSupabase) {
+    const { data: updated, error } = await supabase
+      .from('quiz_questions')
+      .update({
+        type: payload.type,
+        question: payload.question,
+        options: payload.options,
+        correct: payload.correct,
+        updated_at: now
+      })
+      .eq('id', questionId)
+      .eq('topic_id', topicId)
+      .select('*')
+      .maybeSingle();
+    handleSupabaseError('quizQuestions.update', error);
+    return updated ? fromQuizQuestionRow(updated) : null;
+  }
+
+  const state = await getState();
+  ensureQuizTopicsState(state);
+  const topic = state.quizTopics.find((item) => item.id === topicId);
+  if (!topic) return null;
+  const question = topic.questions.find((q) => q.id === questionId);
+  if (!question) return null;
+  Object.assign(question, payload, { updatedAt: now });
+  await persist();
+  return { ...question };
+}
+
+export async function deleteQuizQuestion(topicId, questionId) {
+  if (useSupabase) {
+    const { error } = await supabase.from('quiz_questions').delete().eq('id', questionId).eq('topic_id', topicId);
+    handleSupabaseError('quizQuestions.delete', error);
+    return true;
+  }
+
+  const state = await getState();
+  ensureQuizTopicsState(state);
+  const topic = state.quizTopics.find((item) => item.id === topicId);
+  if (!topic) return false;
+  const index = topic.questions.findIndex((q) => q.id === questionId);
+  if (index === -1) return false;
+  topic.questions.splice(index, 1);
+  topic.questions = topic.questions.map((q, idx) => ({ ...q, order: idx }));
+  await persist();
+  return true;
 }
 
 export async function listUsers() {

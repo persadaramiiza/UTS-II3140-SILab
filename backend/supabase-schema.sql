@@ -68,5 +68,29 @@ create table if not exists public.announcements (
 
 create index if not exists announcements_created_at_idx on public.announcements (created_at desc);
 
+create table if not exists public.quiz_topics (
+  id uuid primary key default gen_random_uuid(),
+  title text not null,
+  description text,
+  created_by text references public.users (id),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists public.quiz_questions (
+  id uuid primary key default gen_random_uuid(),
+  topic_id uuid not null references public.quiz_topics (id) on delete cascade,
+  type text not null check (type in ('multiple', 'text')),
+  question text not null,
+  options jsonb,
+  correct jsonb not null,
+  order_index integer not null default 0,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create index if not exists quiz_topics_created_at_idx on public.quiz_topics (created_at);
+create index if not exists quiz_questions_topic_id_idx on public.quiz_questions (topic_id, order_index);
+
 -- Remember to create a storage bucket (default name: submission-files) in Supabase Storage
 -- and grant the service role permission to read/write objects within that bucket.
