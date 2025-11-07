@@ -1979,13 +1979,12 @@ export function initApp() {
     }
     if (loginError) loginError.textContent = '';
     try {
-      state.assignments.backendLoading = true;
       const { token, user } = await loginWithCredentials(username, password);
       localStorage.setItem('isl-token', token);
       localStorage.setItem('isl-user', JSON.stringify(user));
       state.auth.currentUser = user;
       resetAssignmentState();
-      await synchronizeAssignmentsFromBackend();
+      synchronizeAssignmentsFromBackend();
       hideLogin();
       updateAuthUI();
       revealApp();
@@ -1998,8 +1997,6 @@ export function initApp() {
       state.auth.currentUser = null;
       localStorage.removeItem('isl-token');
       localStorage.removeItem('isl-user');
-    } finally {
-      state.assignments.backendLoading = false;
     }
   });
 
