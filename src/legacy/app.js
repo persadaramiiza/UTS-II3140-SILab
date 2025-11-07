@@ -4135,7 +4135,7 @@ export function initApp() {
         });
 
         if (answerDiv) {
-          answerDiv.textContent = `âœ“ Jawaban benar: ${q.options[q.correct]}`;
+          answerDiv.textContent = `\u2713 Jawaban benar: ${q.options[q.correct]}`;
         }
       } else {
         // Text answer
@@ -4151,7 +4151,7 @@ export function initApp() {
 
         if (answerDiv) {
           const correctText = Array.isArray(q.correct) ? q.correct.join(' / ') : q.correct;
-          answerDiv.textContent = `âœ“ Jawaban benar: ${correctText}`;
+          answerDiv.textContent = `\u2713 Jawaban benar: ${correctText}`;
         }
 
         const input = qDiv?.querySelector('.quiz-input');
